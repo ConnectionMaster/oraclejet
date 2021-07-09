@@ -35,9 +35,6 @@ const DomScroller = function (element, dataprovider, options) {
   this._asyncIterator = options.asyncIterator;
   this._element = $(element)[0];
   this._contentElement = options.contentElement;
-  if (this._contentElement == null) {
-    this._contentElement = this._element;
-  }
   this._fetchSize = options.fetchSize;
   this._fetchSize = this._fetchSize > 0 ? this._fetchSize : 25;
   this._maxCount = options.maxCount;
@@ -59,16 +56,22 @@ const DomScroller = function (element, dataprovider, options) {
   this._lastFetchTrigger = 0;
   this._isScrollTriggeredByMouseWheel = false;
   this._checkViewportCount = 0;
+  this._fetchThreshold = 0.25;
 
   var elem = this._getScrollEventElement();
   this._scrollEventListener = function () {
     if (this._beforeScrollCallback) {
       this._beforeScrollCallback();
     }
-    var scrollTop = this._getScrollTop(this._element);
-    var maxScrollTop = this._contentElement.scrollHeight - this._element.clientHeight;
+    var scrollTop = this._element.scrollTop;
+    var scrollerHeight = this._element.clientHeight;
+    var maxScrollTop = this._element.scrollHeight - scrollerHeight;
     if (maxScrollTop > 0) {
-      this._handleScrollerScrollTop(scrollTop, maxScrollTop);
+      if (this._contentElement) {
+        this._handleExternalScrollerScrollTop(scrollTop, scrollerHeight);
+      } else {
+        this._handleScrollerScrollTop(scrollTop, maxScrollTop);
+      }
     }
   }.bind(this);
   elem.addEventListener('scroll', this._scrollEventListener);
@@ -115,49 +118,6 @@ DomScroller.prototype._getScrollEventElement = function () {
 };
 
 /**
- * Helper method to calculate the offsetTop from element to ancestor
- * @param {Element} ancestor the ancestor element
- * @param {Element} element the element
- * @return {number} the distance between the specified element and ancestor
- */
-DomScroller.calculateOffsetTop = function (ancestor, element) {
-  var offset = 0;
-  var current = element;
-  while (current && current !== ancestor && $.contains(ancestor, current)) {
-    offset += current.offsetTop;
-    current = current.offsetParent;
-  }
-
-  return offset;
-};
-
-/**
- * Gets the scroll top of the element
- * @param {Element} element the element
- * @return {number} scroll top
- * @private
- */
-DomScroller.prototype._getScrollTop = function (element) {
-  var scrollTop = this._fetchTrigger;
-
-  if (element === document.documentElement) {
-    // to ensure it works across all browsers.  See https://bugs.webkit.org/show_bug.cgi?id=106133
-    // for firefox we should use documentElement.scrollTop, for Chrome and IE use body.scrollTop
-    // detect this by checking initial scrollTop is the same as current scrolltop, if it's the same then the scrollTop is not
-    // returning the correct value and we should use body.scrollTop
-    if (this._useBodyScrollTop === undefined) {
-      this._useBodyScrollTop = (this._initialScrollTop === element.scrollTop);
-    }
-
-    if (this._useBodyScrollTop) {
-      return scrollTop + document.body.scrollTop;
-    }
-  }
-
-  return scrollTop + element.scrollTop;
-};
-
-/**
  * Destroys the dom scroller, unregister any event handlers.
  * @export
  * @expose
@@ -176,6 +136,7 @@ DomScroller.prototype.destroy = function () {
 
 /**
  * Check the viewport to see if a fetch needs to be done to fill it. Fetch if it does.
+ * @param {boolean=} forceFetch true if a fetch should be forced even if overflow is detected
  * @return {Promise} Return a Promise which contains either the content of the fetch
  *                   or maxCount information if it has reached maxCount. Promise resolves to null if no fetch was done.
  * @throws {Error}
@@ -184,14 +145,14 @@ DomScroller.prototype.destroy = function () {
  * @memberof! oj.DomScroller
  * @instance
  */
-DomScroller.prototype.checkViewport = function () {
+DomScroller.prototype.checkViewport = function (forceFetch) {
   if (this._asyncIterator && this._element.clientHeight > 0 &&
-      !this.isOverflow()) {
+      (forceFetch || !this.isOverflow() || this._isEndReached())) {
     this._checkViewportCount += 1;
     if (this._checkViewportCount === CHECKVIEWPORT_THRESHOLD) {
       warn('Viewport not satisfied after multiple fetch, make sure the component is height constrained or specify a scroller.');
     }
-    if (this._beforeFetchCallback(this._getScrollTop(this._element) - this._fetchTrigger, true)) {
+    if (this._beforeFetchCallback(this._element.scrollTop, true)) {
       return this._fetchMoreRows();
     }
   }
@@ -232,6 +193,16 @@ DomScroller.prototype._doFetch = function (scrollTop) {
   }
 };
 
+DomScroller.prototype._handleExternalScrollerScrollTop = function (scrollTop, scrollerHeight) {
+  if (!this._fetchPromise && this._asyncIterator) {
+    var bounds = this._contentElement.getBoundingClientRect();
+    var bottom = bounds.bottom - this._fetchTrigger - (bounds.height * this._fetchThreshold);
+    if (bottom <= scrollerHeight) {
+      this._doFetch(scrollTop);
+    }
+  }
+};
+
 /**
  * Handle scrollTop on scroller
  * @private
@@ -239,7 +210,7 @@ DomScroller.prototype._doFetch = function (scrollTop) {
 DomScroller.prototype._handleScrollerScrollTop = function (scrollTop, maxScrollTop) {
   if (!this._fetchPromise && this._asyncIterator) {
     if (maxScrollTop !== this._lastMaxScrollTop) {
-      this._nextFetchTrigger = Math.max(0, (maxScrollTop - scrollTop) / 2);
+      this._nextFetchTrigger = Math.max(0, (maxScrollTop - this._fetchTrigger - scrollTop) / 2);
       this._lastMaxScrollTop = maxScrollTop;
     }
 
@@ -279,8 +250,9 @@ DomScroller.prototype.isOverflow = function () {
     return this._isOverflowCallback();
   }
 
-  var element = this._element;
-  var diff = this._contentElement.scrollHeight - (element.clientHeight + this._fetchTrigger);
+  var scrollHeight = this._contentElement ? this._contentElement.scrollHeight :
+    this._element.scrollHeight;
+  var diff = scrollHeight - (this._element.clientHeight + this._fetchTrigger);
   if (diff === 1 && oj.AgentUtils.getAgentInfo().browser === oj.AgentUtils.BROWSER.EDGE) {
     // hitting Edge , see https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/21405284/
     // note this will only happen with non-height-bounded ListView with loadMoreOnScroll, see 
@@ -288,6 +260,18 @@ DomScroller.prototype.isOverflow = function () {
   }
 
   return (diff > 0);
+};
+
+/**
+ * @private
+ */
+DomScroller.prototype._isEndReached = function () {
+  if ((this._element.scrollHeight - this._element.clientHeight - this._element.scrollTop)
+    < Math.max(1, this._fetchTrigger)) {
+    // this could happen if the offsetTop is not correct
+    return true;
+  }
+  return false;
 };
 
 /**

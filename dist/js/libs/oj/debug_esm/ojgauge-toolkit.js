@@ -9,14 +9,6 @@ import { Obj, BaseComponentDefaults, CSSStyle, JsonUtils, Container, Matrix, Rec
 import { LinearScaleAxisValueFormatter, BaseAxisInfo, DataAxisInfoMixin } from 'ojs/ojdvt-axis';
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Default values and utility functions for component versioning.
  * @class
  * @constructor
@@ -75,14 +67,6 @@ DvtGaugeDefaults.prototype.getAnimationDuration = function(options)
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Default values and utility functions for component versioning.
  * @class
  * @constructor
@@ -107,14 +91,6 @@ DvtDialGaugeDefaults.SKIN_ALTA = {
     'style': new CSSStyle(BaseComponentDefaults.FONT_FAMILY_ALTA)
   }
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Indicator for DialGauge.
@@ -161,14 +137,6 @@ DvtDialGaugeIndicator.prototype.setAnimationParams = function(params) {
   if (params && params.length == 1)
     this.setAngle(params[0]);
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Style related utility functions for gauge components.
@@ -263,14 +231,6 @@ DvtGaugeDataUtils.getReferenceObject = function(gauge, index) {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Utility functions for Gauge.
  * @class
  */
@@ -284,14 +244,6 @@ const DvtGaugeUtils = {
     return !!options['label']['text'];
   }
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Renderer for DvtGauge.
@@ -405,7 +357,7 @@ DvtGaugeRenderer._formatMetricLabelValue = function(value, gauge, converter, sca
   }
 
   // when scaling is set then init formatter
-  var formatter = new LinearScaleAxisValueFormatter(gauge.getCtx(), minValue, maxValue, increment, scaling, autoPrecision, options.translations);
+  var formatter = new LinearScaleAxisValueFormatter(minValue, maxValue, increment, scaling, autoPrecision, options.translations);
   if (converter && converter['format'])
     output = formatter.format(value, converter);
   else if (isPercent){
@@ -616,14 +568,6 @@ DvtGaugeRenderer.adjustForStep = function(options, value) {
   }
   return value;
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Renderer for DialGauge.
@@ -1123,14 +1067,6 @@ DvtDialGaugeRenderer._renderTickLabels = function(gauge, container, bounds) {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  *  Provides automation services for a DVT component.
  *  @class DvtGaugeAutomation
  *  @param {DvtGauge} dvtComponent
@@ -1203,14 +1139,6 @@ DvtGaugeAutomation.prototype.getMetricLabel = function() {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Event Manager for DvtGauge.
  * @param {DvtGauge} gauge
  * @class
@@ -1231,7 +1159,7 @@ Obj.createSubclass(DvtGaugeEventManager, EventManager);
  */
 DvtGaugeEventManager.prototype.OnMouseDown = function(event) {
   // Set the editing flag so moves are tracked
-  if (this._isInteractive()) {
+  if (this._gauge.IsInteractive()) {
     this.IsMouseEditing = true;
     this.hideTooltip();
     var coords = this.GetRelativePosition(event.pageX, event.pageY);
@@ -1284,7 +1212,7 @@ DvtGaugeEventManager.prototype.IsShowingTooltipWhileEditing = function() {
  * @override
  */
 DvtGaugeEventManager.prototype.PreEventBubble = function(event) {
-  if (TouchEvent.TOUCHSTART === event.type && this._isInteractive()) {
+  if (TouchEvent.TOUCHSTART === event.type && this._gauge.IsInteractive()) {
     // Set the editing flag so moves are tracked
     this.IsMouseEditing = true;
     var coords = this.GetRelativePosition(event.touches[0].pageX, event.touches[0].pageY);
@@ -1378,21 +1306,6 @@ DvtGaugeEventManager.prototype.StopMouseEditing = function (event) {
 };
 
 /**
- * Returns whether the gauge is interactive or not.
- */
-DvtGaugeEventManager.prototype._isInteractive = function() {
-  return this._gauge.getOptions()['readOnly'] === false;
-};
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * @param {dvt.EventManager} manager The owning dvt.EventManager
  * @param {DvtGauge} gauge
  * @class DvtGaugeKeyboardHandler
@@ -1442,14 +1355,6 @@ DvtGaugeKeyboardHandler.prototype.processKeyDown = function(event) {
       this._oldValue = value;
   }
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Style related utility functions for gauge components.
@@ -1757,14 +1662,6 @@ DvtGaugeStyleUtils.getDialIndicator = function(indicatorType) {
 
   return DvtGaugeStyleUtils._ALTA_INDICATOR;
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Abstract Base Class for Gauge component.
@@ -2291,7 +2188,7 @@ DvtGauge.prototype.UpdateAriaAttributes = function() {
     var tooltip = DvtGaugeRenderer.getTooltipString(this);
     if (this.IsParentRoot()) {
       var translations = this.Options.translations;
-      if (this.Options['readOnly']) {
+      if (!this.IsInteractive()) {
         this.getCtx().setAriaRole('img');
         this.getCtx().setAriaLabel(ResourceUtils.format(translations.labelAndValue,
             [translations.labelDataVisualization,
@@ -2305,7 +2202,7 @@ DvtGauge.prototype.UpdateAriaAttributes = function() {
             [translations.labelDataVisualization, AriaUtils.processAriaLabel(this.GetComponentDescription())]));
       }
     }
-    else if (this.Options['readOnly']) {
+    else if (!this.IsInteractive()) {
       this.setAriaRole('img');
       this.setAriaProperty('label', Displayable.generateAriaLabel(AriaUtils.processAriaLabel(this.GetComponentDescription()), tooltip ? [tooltip] : null));
     }
@@ -2313,12 +2210,11 @@ DvtGauge.prototype.UpdateAriaAttributes = function() {
 };
 
 /**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
+ * Checks if the gauge is interactive.
  */
+DvtGauge.prototype.IsInteractive = function () {
+  return !this.Options.readOnly;
+};
 
 /**
  * Dial Gauge component.  This class should never be instantiated directly.  Use the
@@ -2495,14 +2391,6 @@ DialGauge.prototype.GetValueAt = function(x, y) {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Default values and utility functions for component versioning.
  * @class
  * @constructor
@@ -2522,14 +2410,6 @@ Obj.createSubclass(DvtLedGaugeDefaults, DvtGaugeDefaults);
 DvtLedGaugeDefaults.SKIN_ALTA = {
   'type': 'circle'
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Renderer for LedGauge.
@@ -2886,14 +2766,6 @@ DvtLedGaugeRenderer._getMetricLabelBounds = function(gauge, container, bounds) {
 };
 
 /**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * LED Gauge component.  This class should never be instantiated directly.  Use the
  * newInstance function instead.
  * @class
@@ -2974,14 +2846,6 @@ LedGauge.prototype.getGaugeType = function() {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Default values and utility functions for component versioning.
  * @class
  * @constructor
@@ -3028,7 +2892,7 @@ Obj.createSubclass(DvtRatingGaugeEventManager, DvtGaugeEventManager);
  */
 DvtRatingGaugeEventManager.prototype.OnMouseOver = function (event) {
   // Only editable gauges
-  if (this._isInteractive()) {
+  if (this._gauge.IsInteractive()) {
     var coords = this.GetRelativePosition(event.pageX, event.pageY);
     this._gauge.__processValueChangeStart(coords.x, coords.y);
     this.IsMouseEditing = true;
@@ -3044,7 +2908,7 @@ DvtRatingGaugeEventManager.prototype.OnMouseOver = function (event) {
  */
 DvtRatingGaugeEventManager.prototype.OnMouseOut = function (event) {
   // Only editable gauges
-  if (this._isInteractive()) {
+  if (this._gauge.IsInteractive()) {
     var coords = this.GetRelativePosition(event.pageX, event.pageY);
     this._gauge.__processHoverEnd(coords.x, coords.y);
     this.IsMouseEditing = false;
@@ -3061,7 +2925,7 @@ DvtRatingGaugeEventManager.prototype.OnMouseMove = function (event){
 
   var coords = this.GetRelativePosition(event.pageX, event.pageY);
   var isDisabled = this._gauge.getOptions()['disabled'] === true;
-  if (this._isInteractive() && !this.IsMouseEditing &&
+  if (this._gauge.IsInteractive() && !this.IsMouseEditing &&
       this._gauge.getOptions()['value'] !== this._gauge.GetValueAt(coords.x, coords.y)) {
     this.IsMouseEditing = true;
   }
@@ -3113,24 +2977,6 @@ DvtRatingGaugeEventManager.prototype.IsShowingTooltipWhileEditing = function () 
 };
 
 /**
- * Checks if the gauge is interactive
- * @override
- */
-DvtRatingGaugeEventManager.prototype._isInteractive = function () {
-  var isReadOnly = this._gauge.getOptions()['readOnly'] === true;
-  var isDisabled = this._gauge.getOptions()['disabled'] === true;
-  return !(isDisabled || isReadOnly);
-};
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Rating gauge tooltip support
  * @param {RatingGauge} gauge The rating gauge.
  * @class
@@ -3157,14 +3003,6 @@ DvtRatingGaugePeer.prototype.getDatatip = function(target, x, y) {
   var threshold = DvtGaugeDataUtils.getThreshold(this._gauge, thresholdIndex);
   return (threshold && threshold['shortDesc']) ? threshold['shortDesc'] : options['shortDesc'];
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Renderer for RatingGauge.
@@ -3351,14 +3189,6 @@ DvtRatingGaugeRenderer._createShape = function(context, x, y, width, height, sta
 
   return shape;
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Rating Gauge component.  This class should never be instantiated directly.  Use the
@@ -3715,12 +3545,14 @@ RatingGauge.prototype.CreateEventManager = function() {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
+ * @override
  */
+RatingGauge.prototype.IsInteractive = function () {
+  if (this.Options.disabled) {
+    return false;
+  }
+  return RatingGauge.superclass.IsInteractive.call(this);
+};
 
 /**
  * Default values and utility functions for component versioning.
@@ -3752,39 +3584,23 @@ DvtStatusMeterGaugeDefaults.SKIN_ALTA = {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * Calculated axis information and drawable creation.
  * @class
  * @constructor
  * @extends {BaseAxisInfo}
  */
-var DvtGaugeDataAxisInfo = function(context, options, availSpace) {
+var DvtGaugeDataAxisInfo = function (context, options, availSpace) {
   this.Init(context, options, availSpace);
 };
 
 Obj.createSubclass(DvtGaugeDataAxisInfo, BaseAxisInfo);
 
-DvtGaugeDataAxisInfo.prototype.Init = function(context, options, availSpace) {
+DvtGaugeDataAxisInfo.prototype.Init = function (context, options, availSpace) {
   DvtGaugeDataAxisInfo.superclass.Init.call(this, context, options, availSpace);
-  this.MixinInit.call(this, context, options, availSpace);
+  this.MixinInit.call(this, options);
 };
 
 DataAxisInfoMixin.call(DvtGaugeDataAxisInfo.prototype);
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Utility functions for StatusMeter.
@@ -3859,14 +3675,6 @@ const DvtStatusMeterGaugeUtils = {
     return cmd;
   }
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Indicator for the circular DvtStatusMetergauge.
@@ -3944,14 +3752,6 @@ DvtStatusMeterGaugeCircularIndicator.prototype.setAnimationParams = function(par
   if (params && params.length == 5)
     this.setPath(params[0], params[1], params[2], params[3], params[4]);
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Indicator for StatusMeterGauge.
@@ -4035,14 +3835,6 @@ DvtStatusMeterGaugeIndicator.prototype.setAnimationParams = function(params) {
   if (params && params.length == 4)
     this.setCoords(params[0], params[1], params[2], params[3]);
 };
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Renderer for StatusMeterGauge.
@@ -4215,6 +4007,7 @@ DvtStatusMeterGaugeRenderer._renderShape = function(gauge, container, bounds) {
     'layout' : {
     }
   };
+  axisOptions.isRTL = isRTL;
   axisOptions['layout']['gapRatio'] = 0;
   axisOptions['timeAxisType'] = 'disabled';
   axisOptions['position'] = isVert ? 'left' : 'bottom';
@@ -5114,14 +4907,6 @@ DvtStatusMeterGaugeRenderer._renderCenterContent = function(gauge, options, boun
       callback(newOverlay);
   }
 };
-
-/**
- * @license
- * Copyright (c) 2008 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * Status Meter Gauge component.  This class should never be instantiated directly.  Use the

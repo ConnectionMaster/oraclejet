@@ -1,23 +1,9 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
 import { DataProvider, SortCriterion, FetchByKeysParameters, ContainsKeysResults, FetchByKeysResults, FetchByOffsetParameters, FetchByOffsetResults, FetchListResult,
    FetchListParameters } from '../ojdataprovider';
 import ArrayDataProvider = require('../ojarraydataprovider');
 import TreeDataProvider = require('../ojtreedataprovider');
 declare class ArrayTreeDataProvider<K, D> implements TreeDataProvider<K, D> {
-    constructor(data: any[] | (() => any[]), options?: {
-        sortComparators?: ArrayDataProvider.SortComparators<D>;
-        implicitSort?: Array<SortCriterion<D>>;
-        keyAttributes?: string | string[];
-        keyAttributesScope?: 'global' | 'siblings';
-        childrenAttribute?: string;
-    });
+    constructor(data: any[] | (() => any[]), options?: ArrayTreeDataProvider.Options<D>);
     addEventListener(eventType: string, listener: EventListener): void;
     containsKeys(parameters: FetchByKeysParameters<K>): Promise<ContainsKeysResults<K>>;
     createOptimizedKeyMap?(initialMap?: Map<K, D>): Map<K, D>;
@@ -31,5 +17,16 @@ declare class ArrayTreeDataProvider<K, D> implements TreeDataProvider<K, D> {
     getTotalSize(): Promise<number>;
     isEmpty(): 'yes' | 'no' | 'unknown';
     removeEventListener(eventType: string, listener: EventListener): void;
+}
+declare namespace ArrayTreeDataProvider {
+    // tslint:disable-next-line interface-over-type-literal
+    type Options<D> = {
+        childrenAttribute?: string;
+        implicitSort?: Array<SortCriterion<D>>;
+        keyAttributes?: string | string[];
+        keyAttributesScope?: 'sibling' | 'global';
+        sortComparators?: ArrayDataProvider.SortComparators<D>;
+        textFilterAttributes?: string[];
+    };
 }
 export = ArrayTreeDataProvider;

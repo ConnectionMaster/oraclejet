@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import { baseComponent, baseComponentEventMap, baseComponentSettableProperties, JetElementCustomEvent, JetSetPropertyType } from '..';
 export interface ojDialog extends baseComponent<ojDialogSettableProperties> {
     cancelBehavior: 'icon' | 'escape' | 'none';
@@ -120,7 +114,7 @@ export namespace ojDialog {
     };
     // tslint:disable-next-line interface-over-type-literal
     type PositionAlign = {
-        horizontal?: 'start' | 'end' | 'left' | 'center' | 'bottom';
+        horizontal?: 'start' | 'end' | 'left' | 'center' | 'right';
         vertical?: 'top' | 'bottom' | 'center';
     };
     // tslint:disable-next-line interface-over-type-literal
@@ -162,4 +156,126 @@ export interface ojDialogSettableProperties extends baseComponentSettablePropert
 }
 export interface ojDialogSettablePropertiesLenient extends Partial<ojDialogSettableProperties> {
     [key: string]: any;
+}
+export type DialogElement = ojDialog;
+export namespace DialogElement {
+    interface ojAnimateEnd extends CustomEvent<{
+        action: 'open' | 'close';
+        element: Element;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojAnimateStart extends CustomEvent<{
+        action: 'open' | 'close';
+        element: Element;
+        endCallback: (() => void);
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeClose extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeOpen extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojClose extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojFocus extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojOpen extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojResize extends CustomEvent<{
+        originalEvent: object;
+        originalPosition: object;
+        originalSize: object;
+        position: object;
+        size: object;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojResizeStart extends CustomEvent<{
+        originalEvent: object;
+        originalPosition: object;
+        originalSize: object;
+        position: object;
+        size: object;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojResizeStop extends CustomEvent<{
+        originalEvent: object;
+        originalPosition: object;
+        originalSize: object;
+        position: object;
+        size: object;
+        [propName: string]: any;
+    }> {
+    }
+    // tslint:disable-next-line interface-over-type-literal
+    type cancelBehaviorChanged = JetElementCustomEvent<ojDialog["cancelBehavior"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dialogTitleChanged = JetElementCustomEvent<ojDialog["dialogTitle"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dragAffordanceChanged = JetElementCustomEvent<ojDialog["dragAffordance"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type initialVisibilityChanged = JetElementCustomEvent<ojDialog["initialVisibility"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type modalityChanged = JetElementCustomEvent<ojDialog["modality"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type positionChanged = JetElementCustomEvent<ojDialog["position"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type resizeBehaviorChanged = JetElementCustomEvent<ojDialog["resizeBehavior"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type Position = {
+        at?: ojDialog.PositionAlign;
+        collision?: 'flip' | 'fit' | 'flipfit' | 'none';
+        my?: ojDialog.PositionAlign;
+        of?: string | ojDialog.PositionPoint;
+        offset?: ojDialog.PositionPoint;
+    };
+    // tslint:disable-next-line interface-over-type-literal
+    type PositionPoint = {
+        x?: number;
+        y?: number;
+    };
+}
+export interface DialogIntrinsicProps extends Partial<Readonly<ojDialogSettableProperties>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onojAnimateEnd?: (value: ojDialogEventMap['ojAnimateEnd']) => void;
+    onojAnimateStart?: (value: ojDialogEventMap['ojAnimateStart']) => void;
+    onojBeforeClose?: (value: ojDialogEventMap['ojBeforeClose']) => void;
+    onojBeforeOpen?: (value: ojDialogEventMap['ojBeforeOpen']) => void;
+    onojClose?: (value: ojDialogEventMap['ojClose']) => void;
+    onojFocus?: (value: ojDialogEventMap['ojFocus']) => void;
+    onojOpen?: (value: ojDialogEventMap['ojOpen']) => void;
+    onojResize?: (value: ojDialogEventMap['ojResize']) => void;
+    onojResizeStart?: (value: ojDialogEventMap['ojResizeStart']) => void;
+    onojResizeStop?: (value: ojDialogEventMap['ojResizeStop']) => void;
+    oncancelBehaviorChanged?: (value: ojDialogEventMap['cancelBehaviorChanged']) => void;
+    ondialogTitleChanged?: (value: ojDialogEventMap['dialogTitleChanged']) => void;
+    ondragAffordanceChanged?: (value: ojDialogEventMap['dragAffordanceChanged']) => void;
+    oninitialVisibilityChanged?: (value: ojDialogEventMap['initialVisibilityChanged']) => void;
+    onmodalityChanged?: (value: ojDialogEventMap['modalityChanged']) => void;
+    onpositionChanged?: (value: ojDialogEventMap['positionChanged']) => void;
+    onresizeBehaviorChanged?: (value: ojDialogEventMap['resizeBehaviorChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-dialog": DialogIntrinsicProps;
+        }
+    }
 }

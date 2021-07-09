@@ -1,14 +1,8 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import CommonTypes = require('../ojcommontypes');
 import { KeySet } from '../ojkeyset';
-import { DataProvider, ItemMetadata } from '../ojdataprovider';
+import { DataProvider, ItemMetadata, Item } from '../ojdataprovider';
 import { baseComponent, baseComponentEventMap, baseComponentSettableProperties, JetElementCustomEvent, JetSetPropertyType } from '..';
 export interface ojListView<K, D> extends baseComponent<ojListViewSettableProperties<K, D>> {
     as: string;
@@ -252,11 +246,12 @@ export namespace ojListView {
         reorder: boolean;
     };
     // tslint:disable-next-line interface-over-type-literal
-    type ItemTemplateContext = {
+    type ItemTemplateContext<K = any, D = any> = {
         componentElement: Element;
-        data: object;
+        data: any;
         depth: number;
         index: number;
+        item: Item<K, D>;
         key: any;
         leaf: boolean;
         parentkey: any;
@@ -383,4 +378,173 @@ export interface ojListViewSettableProperties<K, D> extends baseComponentSettabl
 }
 export interface ojListViewSettablePropertiesLenient<K, D> extends Partial<ojListViewSettableProperties<K, D>> {
     [key: string]: any;
+}
+export type ListViewElement<K, D> = ojListView<K, D>;
+export namespace ListViewElement {
+    interface ojAnimateEnd extends CustomEvent<{
+        action: string;
+        element: Element;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojAnimateStart extends CustomEvent<{
+        action: string;
+        element: Element;
+        endCallback: (() => void);
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeCollapse<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeCurrentItem<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        previousItem: Element;
+        previousKey: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeExpand<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojCollapse<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojCopy extends CustomEvent<{
+        items: Element[];
+        [propName: string]: any;
+    }> {
+    }
+    interface ojCut extends CustomEvent<{
+        items: Element[];
+        [propName: string]: any;
+    }> {
+    }
+    interface ojExpand<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojItemAction<K, D> extends CustomEvent<{
+        context: CommonTypes.ItemContext<K, D>;
+        originalEvent: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojPaste extends CustomEvent<{
+        item: Element;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojReorder extends CustomEvent<{
+        items: Element[];
+        position: string;
+        reference: Element;
+        [propName: string]: any;
+    }> {
+    }
+    // tslint:disable-next-line interface-over-type-literal
+    type asChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["as"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type currentItemChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["currentItem"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dataChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["data"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type displayChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["display"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dndChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["dnd"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type drillModeChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["drillMode"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type expandedChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["expanded"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type firstSelectedItemChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["firstSelectedItem"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type gridlinesChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["gridlines"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type groupHeaderPositionChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["groupHeaderPosition"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type itemChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["item"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type scrollPolicyChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["scrollPolicy"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type scrollPolicyOptionsChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["scrollPolicyOptions"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type scrollPositionChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["scrollPosition"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type scrollToKeyChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["scrollToKey"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectedChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["selected"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectionChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["selection"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectionModeChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["selectionMode"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectionRequiredChanged<K, D> = JetElementCustomEvent<ojListView<K, D>["selectionRequired"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type ContextByNode<K> = {
+        group?: boolean;
+        index: number;
+        key: K;
+        parent?: Element;
+        subId: string;
+    };
+    // tslint:disable-next-line interface-over-type-literal
+    type ItemsDropContext = {
+        item: Element;
+        position: 'before' | 'after' | 'inside';
+        reorder: boolean;
+    };
+}
+export interface ListViewIntrinsicProps extends Partial<Readonly<ojListViewSettableProperties<any, any>>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onojAnimateEnd?: (value: ojListViewEventMap<any, any>['ojAnimateEnd']) => void;
+    onojAnimateStart?: (value: ojListViewEventMap<any, any>['ojAnimateStart']) => void;
+    onojBeforeCollapse?: (value: ojListViewEventMap<any, any>['ojBeforeCollapse']) => void;
+    onojBeforeCurrentItem?: (value: ojListViewEventMap<any, any>['ojBeforeCurrentItem']) => void;
+    onojBeforeExpand?: (value: ojListViewEventMap<any, any>['ojBeforeExpand']) => void;
+    onojCollapse?: (value: ojListViewEventMap<any, any>['ojCollapse']) => void;
+    onojCopy?: (value: ojListViewEventMap<any, any>['ojCopy']) => void;
+    onojCut?: (value: ojListViewEventMap<any, any>['ojCut']) => void;
+    onojExpand?: (value: ojListViewEventMap<any, any>['ojExpand']) => void;
+    onojItemAction?: (value: ojListViewEventMap<any, any>['ojItemAction']) => void;
+    onojPaste?: (value: ojListViewEventMap<any, any>['ojPaste']) => void;
+    onojReorder?: (value: ojListViewEventMap<any, any>['ojReorder']) => void;
+    onasChanged?: (value: ojListViewEventMap<any, any>['asChanged']) => void;
+    oncurrentItemChanged?: (value: ojListViewEventMap<any, any>['currentItemChanged']) => void;
+    ondataChanged?: (value: ojListViewEventMap<any, any>['dataChanged']) => void;
+    ondisplayChanged?: (value: ojListViewEventMap<any, any>['displayChanged']) => void;
+    ondndChanged?: (value: ojListViewEventMap<any, any>['dndChanged']) => void;
+    ondrillModeChanged?: (value: ojListViewEventMap<any, any>['drillModeChanged']) => void;
+    onexpandedChanged?: (value: ojListViewEventMap<any, any>['expandedChanged']) => void;
+    onfirstSelectedItemChanged?: (value: ojListViewEventMap<any, any>['firstSelectedItemChanged']) => void;
+    ongridlinesChanged?: (value: ojListViewEventMap<any, any>['gridlinesChanged']) => void;
+    ongroupHeaderPositionChanged?: (value: ojListViewEventMap<any, any>['groupHeaderPositionChanged']) => void;
+    onitemChanged?: (value: ojListViewEventMap<any, any>['itemChanged']) => void;
+    onscrollPolicyChanged?: (value: ojListViewEventMap<any, any>['scrollPolicyChanged']) => void;
+    onscrollPolicyOptionsChanged?: (value: ojListViewEventMap<any, any>['scrollPolicyOptionsChanged']) => void;
+    onscrollPositionChanged?: (value: ojListViewEventMap<any, any>['scrollPositionChanged']) => void;
+    onscrollToKeyChanged?: (value: ojListViewEventMap<any, any>['scrollToKeyChanged']) => void;
+    onselectedChanged?: (value: ojListViewEventMap<any, any>['selectedChanged']) => void;
+    onselectionChanged?: (value: ojListViewEventMap<any, any>['selectionChanged']) => void;
+    onselectionModeChanged?: (value: ojListViewEventMap<any, any>['selectionModeChanged']) => void;
+    onselectionRequiredChanged?: (value: ojListViewEventMap<any, any>['selectionRequiredChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-list-view": ListViewIntrinsicProps;
+        }
+    }
 }

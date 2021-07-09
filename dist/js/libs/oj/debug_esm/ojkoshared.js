@@ -6,17 +6,10 @@
  * @ignore
  */
 import oj from 'ojs/ojcore-base';
-import { bindingProvider, ignoreDependencies, virtualElements, nativeTemplateEngine, components, utils, expressionRewriting } from 'knockout';
+import { bindingProvider, components, ignoreDependencies, virtualElements, nativeTemplateEngine, templateSources, utils, expressionRewriting } from 'knockout';
 import { getExpressionEvaluator } from 'ojs/ojconfig';
 import { error } from 'ojs/ojlogger';
 
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 /**
  * @private
  * @constructor
@@ -90,14 +83,6 @@ GlobalChangeQueue.prototype._resolveDelayPromise = function () {
 };
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-/**
  * @ignore
  * @constructor
  */
@@ -152,6 +137,7 @@ function _KoCustomBindingProvider() {
     custom.preprocessNode = _wrapPreprocessNode(wrapped);
 
     _patchKoRenderTemplateSource();
+    _patchKoTemplateSourceDomElement();
     _patchKoComponentsLoaders();
     _patchKoEvaluatorForCSP(_KoBindingCache);
 
@@ -238,7 +224,7 @@ function _KoCustomBindingProvider() {
   function _wrap(wrapped, name, prewrap) {
     var isHasBindings = (name === 'nodeHasBindings');
 
-    var impl = function (arg0) {
+    return function (arg0) {
       if (isHasBindings) {
         var type = arg0.nodeType;
         if (type !== 1 && type !== 8) {
@@ -263,13 +249,11 @@ function _KoCustomBindingProvider() {
       }
       return ret;
     };
-
-    return impl;
   }
 
   function _wrapPreprocessNode(wrapped) {
     var originalPreprocessor = wrapped.preprocessNode;
-    var impl = function (node) {
+    return function (node) {
       var preprocessor;
       var ret;
       var obj = null;
@@ -288,7 +272,6 @@ function _KoCustomBindingProvider() {
       }
       return ret;
     };
-    return impl;
   }
 
   function _preprocessNewNodes(originalNode, newNodes) {
@@ -322,7 +305,8 @@ function _KoCustomBindingProvider() {
   }
 
   // Patches renderTemplateSource() to ensure that the template is parsed with the current document.
-  // Otherwise, the custom elements are not being upgraded synchronously
+  // Otherwise, the custom elements are not being upgraded synchronously.
+  // This method addresses an issue when JET components are defined inside of a <script> element.
   function _patchKoRenderTemplateSource() {
     var proto = nativeTemplateEngine.prototype;
     var method = 'renderTemplateSource';
@@ -335,10 +319,26 @@ function _KoCustomBindingProvider() {
       };
   }
 
+    // Patches ko.templateSources.domElement.nodes() method to ensure that custom elements are upgraded synchronously.
+    // This method addresses an issue when JET components are defined inside of an external <template> element.
+    function _patchKoTemplateSourceDomElement() {
+      const proto = templateSources.domElement.prototype;
+      const method = 'nodes';
+      const delegate = proto[method];
+
+      proto[method] =
+        function () {
+          const nodes = delegate.apply(this, arguments);
+          return nodes && nodes.nodeType === 11 ? document.importNode(nodes, true) : nodes;
+        };
+    }
+
   // This method adds custom KO component loader that overrides defaultLoader.loadTemplate().
   // This is done to ensure that the template is parsed with the current document in order
   // to upgrade custom elements synchronously
   // The custom loader takes precedence over the default loader.
+  // This method addresses an issue when a knockout native component is used as a part of a JET component,
+  // e.g. when items for oj-list-view contain a KO registered component.
   function _patchKoComponentsLoaders() {
     components.loaders.unshift({
       loadTemplate: function (name, templateConfig, callback) {
@@ -354,7 +354,7 @@ function _KoCustomBindingProvider() {
   }
 
   function _preWrapGetAccessors(original, wrappedProvider) {
-    var impl = function (node, bindingContext) {
+    return function (node, bindingContext) {
       if (bindingContext[_OJ_EXTENDED]) {
         var bindingsString = _getBindingsString(node, wrappedProvider, bindingContext);
         // _createExtendAccessorsViaCache() returns a function that will produce a map of binding accessors.
@@ -383,8 +383,6 @@ function _KoCustomBindingProvider() {
       }
       return original.call(wrappedProvider, node, bindingContext);
     };
-
-    return impl;
   }
 
   function _createExtendAccessorsViaCache(bindingsString, bindingContext) {

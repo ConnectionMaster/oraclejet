@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import ojDataGrid = require('../ojdatagrid');
 import ojTable = require('../ojtable');
 import { DataProvider } from '../ojdataprovider';
@@ -74,4 +68,44 @@ export interface ojRowExpanderSettableProperties<K, D> extends baseComponentSett
 }
 export interface ojRowExpanderSettablePropertiesLenient<K, D> extends Partial<ojRowExpanderSettableProperties<K, D>> {
     [key: string]: any;
+}
+export type RowExpanderElement<K, D> = ojRowExpander<K, D>;
+export namespace RowExpanderElement {
+    interface ojCollapse extends CustomEvent<{
+        rowKey: any;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojExpand<K> extends CustomEvent<{
+        rowKey: any;
+        [propName: string]: any;
+    }> {
+    }
+    // tslint:disable-next-line interface-over-type-literal
+    type contextChanged<K, D> = JetElementCustomEvent<ojRowExpander<K, D>["context"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type Context<K, D> = {
+        datasource: DataProvider<K, D> | null;
+        isLeaf: boolean;
+        key: K;
+        keys: {
+            column: K;
+            row: K;
+        };
+        parentKey: K;
+        treeDepth: number;
+    };
+}
+export interface RowExpanderIntrinsicProps extends Partial<Readonly<ojRowExpanderSettableProperties<any, any>>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onojCollapse?: (value: ojRowExpanderEventMap<any, any>['ojCollapse']) => void;
+    onojExpand?: (value: ojRowExpanderEventMap<any, any>['ojExpand']) => void;
+    oncontextChanged?: (value: ojRowExpanderEventMap<any, any>['contextChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-row-expander": RowExpanderIntrinsicProps;
+        }
+    }
 }

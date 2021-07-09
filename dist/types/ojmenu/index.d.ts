@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import { baseComponent, baseComponentEventMap, baseComponentSettableProperties, JetElementCustomEvent, JetSetPropertyType } from '..';
 export interface ojMenu extends baseComponent<ojMenuSettableProperties> {
     disabled: boolean;
@@ -114,4 +108,79 @@ export interface ojMenuSettableProperties extends baseComponentSettablePropertie
 }
 export interface ojMenuSettablePropertiesLenient extends Partial<ojMenuSettableProperties> {
     [key: string]: any;
+}
+export type MenuElement = ojMenu;
+export namespace MenuElement {
+    interface ojAction extends CustomEvent<{
+        [propName: string]: any;
+    }> {
+    }
+    interface ojAnimateEnd extends CustomEvent<{
+        action: 'open' | 'close';
+        element: Element;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojAnimateStart extends CustomEvent<{
+        action: 'open' | 'close';
+        element: Element;
+        endCallback: (() => void);
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeOpen extends CustomEvent<{
+        openOptions: ojMenu.OpenOptions;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojClose extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojMenuAction extends CustomEvent<{
+        selectedValue: any;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojOpen extends CustomEvent<{
+        event: Event;
+        [propName: string]: any;
+    }> {
+    }
+    // tslint:disable-next-line interface-over-type-literal
+    type disabledChanged = JetElementCustomEvent<ojMenu["disabled"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type openOptionsChanged = JetElementCustomEvent<ojMenu["openOptions"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type OpenOptions = {
+        display?: string;
+        initialFocus?: string;
+        launcher?: string | Element;
+        position?: ojMenu.Position;
+    };
+    // tslint:disable-next-line interface-over-type-literal
+    type PositionAlign = {
+        horizontal?: 'start' | 'end' | 'left' | 'center' | 'bottom';
+        vertical?: 'top' | 'bottom' | 'center';
+    };
+}
+export interface MenuIntrinsicProps extends Partial<Readonly<ojMenuSettableProperties>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onojAction?: (value: ojMenuEventMap['ojAction']) => void;
+    onojAnimateEnd?: (value: ojMenuEventMap['ojAnimateEnd']) => void;
+    onojAnimateStart?: (value: ojMenuEventMap['ojAnimateStart']) => void;
+    onojBeforeOpen?: (value: ojMenuEventMap['ojBeforeOpen']) => void;
+    onojClose?: (value: ojMenuEventMap['ojClose']) => void;
+    onojMenuAction?: (value: ojMenuEventMap['ojMenuAction']) => void;
+    onojOpen?: (value: ojMenuEventMap['ojOpen']) => void;
+    ondisabledChanged?: (value: ojMenuEventMap['disabledChanged']) => void;
+    onopenOptionsChanged?: (value: ojMenuEventMap['openOptionsChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-menu": MenuIntrinsicProps;
+        }
+    }
 }

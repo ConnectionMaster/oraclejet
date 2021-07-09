@@ -11,9 +11,9 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
      * @export
      * @interface NormalizedQuery
      * @classdesc Interface for normalized query structure. Various REST endpoints support
-     *            different syntax for querying resources. Normalizing the query syntax 
-     *            enables Oracle Persistence Toolkit to perform certain functionalities 
-     *            including client side shredded data cleanup. 
+     *            different syntax for querying resources. Normalizing the query syntax
+     *            enables Oracle Persistence Toolkit to perform certain functionalities
+     *            including client side shredded data cleanup.
      * @hideconstructor
      */
 
@@ -50,7 +50,7 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
         * @name searchCriteria
         * @type {object}
         */
-        
+
     /**
      * @class queryHandlers
      * @classdesc Contains out of the box query handlers.
@@ -85,6 +85,7 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
       createQueryExp = createQueryExp || function (urlParams) {
         return _createQueryFromAdfBcParams(urlParams, null);
       }
+      var sortQuery;
       // normalize the query parameters into format:
       // offset: integer
       // limit: integer
@@ -98,6 +99,7 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
         var queryParamEntry;
         var queryParamName;
         var queryParamValue;
+        sortQuery = [];
         if (typeof URLSearchParams === 'undefined') {
           // IE does not support URLSearchParams so parse
           // it ourselves
@@ -118,6 +120,14 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
               limit = parseInt(queryParamValue, 10);
             } else if (queryParamName == 'offset') {
               offset = parseInt(queryParamValue, 10);
+            } else if(queryParamName.toLowerCase() === 'orderby' && !sortQuery.length) {
+              var sortQueryValues = queryParamValue.split(',');
+              sortQueryValues.forEach(function(sortQueryValue) {
+                var sortValue = sortQueryValue.split(':');
+                var _sortQueryItem = {};
+                _sortQueryItem["value." + sortValue[0]] = sortValue[1] ? sortValue[1] : 'asc' ;
+                sortQuery.push(_sortQueryItem);
+              })
             }
           }
         } while (!queryParamEntry['done']);
@@ -133,7 +143,7 @@ define(['./persistenceManager', './persistenceStoreManager', './persistenceUtils
           logger.log("Offline Persistence Toolkit queryHandlers: OracleRestQueryHandler processing request");
           var normalized = normalizeOracleRestQueryParameter(request.url);
 
-          var findQuery = persistenceUtils._mapFindQuery(createQueryExp(normalized.searchCriteria), dataMapping);
+          var findQuery = persistenceUtils._mapFindQuery(createQueryExp(normalized.searchCriteria), dataMapping, sortQuery);
 
           var shredder;
           var unshredder;

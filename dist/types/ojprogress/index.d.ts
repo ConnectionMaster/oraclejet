@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import { baseComponent, baseComponentEventMap, baseComponentSettableProperties, JetElementCustomEvent, JetSetPropertyType } from '..';
 export interface ojProgress extends baseComponent<ojProgressSettableProperties> {
     max: number;
@@ -45,4 +39,26 @@ export interface ojProgressSettableProperties extends baseComponentSettablePrope
 }
 export interface ojProgressSettablePropertiesLenient extends Partial<ojProgressSettableProperties> {
     [key: string]: any;
+}
+export type ProgressElement = ojProgress;
+export namespace ProgressElement {
+    // tslint:disable-next-line interface-over-type-literal
+    type maxChanged = JetElementCustomEvent<ojProgress["max"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type typeChanged = JetElementCustomEvent<ojProgress["type"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type valueChanged = JetElementCustomEvent<ojProgress["value"]>;
+}
+export interface ProgressIntrinsicProps extends Partial<Readonly<ojProgressSettableProperties>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onmaxChanged?: (value: ojProgressEventMap['maxChanged']) => void;
+    ontypeChanged?: (value: ojProgressEventMap['typeChanged']) => void;
+    onvalueChanged?: (value: ojProgressEventMap['valueChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-progress": ProgressIntrinsicProps;
+        }
+    }
 }

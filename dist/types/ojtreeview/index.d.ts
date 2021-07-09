@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import { ItemMetadata } from '../ojdataprovider';
 import { KeySet } from '../ojkeyset';
 import TreeDataProvider = require('../ojtreedataprovider');
@@ -54,6 +48,9 @@ export interface ojTreeView<K, D> extends baseComponent<ojTreeViewSettableProper
     selected: KeySet<K>;
     selection: K[];
     selectionMode: 'none' | 'single' | 'multiple' | 'leafOnly';
+    translations: {
+        treeViewSelectorAria?: string;
+    };
     addEventListener<T extends keyof ojTreeViewEventMap<K, D>>(type: T, listener: (this: HTMLElement, ev: ojTreeViewEventMap<K, D>[T]) => any, options?: (boolean | AddEventListenerOptions)): void;
     addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: (boolean | AddEventListenerOptions)): void;
     getProperty<T extends keyof ojTreeViewSettableProperties<K, D>>(property: T): ojTreeView<K, D>[T];
@@ -131,6 +128,7 @@ export namespace ojTreeView {
     type ItemContext<K, D> = {
         componentElement: Element;
         data?: D;
+        datasource: TreeDataProvider<K, D> | object;
         depth: number;
         index: number;
         key: K;
@@ -217,7 +215,125 @@ export interface ojTreeViewSettableProperties<K, D> extends baseComponentSettabl
     selected: KeySet<K>;
     selection: K[];
     selectionMode: 'none' | 'single' | 'multiple' | 'leafOnly';
+    translations: {
+        treeViewSelectorAria?: string;
+    };
 }
 export interface ojTreeViewSettablePropertiesLenient<K, D> extends Partial<ojTreeViewSettableProperties<K, D>> {
     [key: string]: any;
+}
+export type TreeViewElement<K, D> = ojTreeView<K, D>;
+export namespace TreeViewElement {
+    interface ojAnimateEnd extends CustomEvent<{
+        action: 'expand' | 'collapse';
+        element: Element;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojAnimateStart extends CustomEvent<{
+        action: 'expand' | 'collapse';
+        element: Element;
+        endCallback: (() => void);
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeCollapse<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeCurrentItem<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        previousItem: Element;
+        previousKey: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojBeforeExpand<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojCollapse<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    interface ojExpand<K> extends CustomEvent<{
+        item: Element;
+        key: K;
+        [propName: string]: any;
+    }> {
+    }
+    // tslint:disable-next-line interface-over-type-literal
+    type currentItemChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["currentItem"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dataChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["data"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type dndChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["dnd"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type expandedChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["expanded"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type itemChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["item"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type scrollPolicyOptionsChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["scrollPolicyOptions"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectedChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["selected"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectionChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["selection"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type selectionModeChanged<K, D> = JetElementCustomEvent<ojTreeView<K, D>["selectionMode"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type ItemContext<K, D> = {
+        componentElement: Element;
+        data?: D;
+        datasource: TreeDataProvider<K, D> | object;
+        depth: number;
+        index: number;
+        key: K;
+        leaf: boolean;
+        metadata: ItemMetadata<K>;
+        parentElement: Element;
+        parentKey?: K;
+    };
+    // tslint:disable-next-line interface-over-type-literal
+    type ItemTemplateContext = {
+        componentElement: Element;
+        data: object;
+        depth: number;
+        index: number;
+        key: any;
+        leaf: boolean;
+        parentkey: any;
+    };
+}
+export interface TreeViewIntrinsicProps extends Partial<Readonly<ojTreeViewSettableProperties<any, any>>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    onojAnimateEnd?: (value: ojTreeViewEventMap<any, any>['ojAnimateEnd']) => void;
+    onojAnimateStart?: (value: ojTreeViewEventMap<any, any>['ojAnimateStart']) => void;
+    onojBeforeCollapse?: (value: ojTreeViewEventMap<any, any>['ojBeforeCollapse']) => void;
+    onojBeforeCurrentItem?: (value: ojTreeViewEventMap<any, any>['ojBeforeCurrentItem']) => void;
+    onojBeforeExpand?: (value: ojTreeViewEventMap<any, any>['ojBeforeExpand']) => void;
+    onojCollapse?: (value: ojTreeViewEventMap<any, any>['ojCollapse']) => void;
+    onojExpand?: (value: ojTreeViewEventMap<any, any>['ojExpand']) => void;
+    oncurrentItemChanged?: (value: ojTreeViewEventMap<any, any>['currentItemChanged']) => void;
+    ondataChanged?: (value: ojTreeViewEventMap<any, any>['dataChanged']) => void;
+    ondndChanged?: (value: ojTreeViewEventMap<any, any>['dndChanged']) => void;
+    onexpandedChanged?: (value: ojTreeViewEventMap<any, any>['expandedChanged']) => void;
+    onitemChanged?: (value: ojTreeViewEventMap<any, any>['itemChanged']) => void;
+    onscrollPolicyOptionsChanged?: (value: ojTreeViewEventMap<any, any>['scrollPolicyOptionsChanged']) => void;
+    onselectedChanged?: (value: ojTreeViewEventMap<any, any>['selectedChanged']) => void;
+    onselectionChanged?: (value: ojTreeViewEventMap<any, any>['selectionChanged']) => void;
+    onselectionModeChanged?: (value: ojTreeViewEventMap<any, any>['selectionModeChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-tree-view": TreeViewIntrinsicProps;
+        }
+    }
 }

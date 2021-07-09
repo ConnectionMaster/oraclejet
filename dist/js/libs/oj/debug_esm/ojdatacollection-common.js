@@ -5,15 +5,9 @@
  * as shown at https://oss.oracle.com/licenses/upl/
  * @ignore
  */
+import $ from 'jquery';
 import oj from 'ojs/ojcore-base';
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
+import { getNoJQFocusHandlers as getNoJQFocusHandlers$1, getLogicalParent } from 'ojs/ojdomutils';
 
 /**
  * This class contains utility methods used by the data collection components (DataGrid, Listview, and Table).
@@ -35,6 +29,11 @@ DataCollectionUtils._DATA_OJ_TABMOD = 'data-oj-tabmod';
  * @private
  */
 DataCollectionUtils._FOCUSABLE_ELEMENTS_QUERY = "input, select, button, a[href], textarea, object, [tabIndex]:not([tabIndex='-1'])";
+
+/**
+ * @private
+ */
+DataCollectionUtils._FOCUSABLE_ELEMENTS_TAG = ['input', 'select', 'button', 'a', 'textarea', 'object'];
 
 /**
  * Number of times checkViewport occured during initial fetch before log a warning
@@ -135,7 +134,17 @@ DataCollectionUtils.enableAllFocusableElements = function (element) {
 };
 
 /**
- * Finds all the focusable elements in a node including ones with tabmod on them (disbaled by us)
+ * Helper method to check if click target is selector
+ * @param {Event} event
+ * @return {boolean} boolean if the click event target is selector
+ * @private
+ */
+DataCollectionUtils.isFromDefaultSelector = function (event) {
+  return event.target.classList.contains('oj-selectorbox');
+};
+
+/**
+ * Finds all the focusable elements in a node including ones with tabmod on them (disabled by us)
  * @param {Element} element
  * @return {Element[]} An array of the enabled elements
  * @private
@@ -150,6 +159,26 @@ DataCollectionUtils.getFocusableElementsIncludingDisabled = function (element) {
     }
   }
   return inputElems;
+};
+
+/**
+ * Checks if the element is focusable or is contained inside a focusable element
+ * @param {Element|undefined|null} element
+ * @param {function=} stopCondition
+ */
+DataCollectionUtils.isElementOrAncestorFocusable = function (element, stopCondition) {
+  if (element == null || (stopCondition && stopCondition(element))) {
+    return false;
+  } else if (element.hasAttribute(DataCollectionUtils._DATA_OJ_TABMOD)) {
+    return true;
+  } else if (parseInt(element.getAttribute(DataCollectionUtils._TAB_INDEX), 10) >= 0) {
+    return true;
+  } else if (DataCollectionUtils._FOCUSABLE_ELEMENTS_TAG.indexOf(element.tagName.toLowerCase())
+    > -1) {
+    return true;
+  }
+
+  return DataCollectionUtils.isElementOrAncestorFocusable(element.parentElement, stopCondition);
 };
 
 /**
@@ -334,15 +363,7 @@ DataCollectionUtils.isMobileTouchDevice = function () {
 };
 
 DataCollectionUtils.getNoJQFocusHandlers = function (focusIn, focusOut) {
-  var noJQFocusInHandler = function (element) {
-    return focusIn($(element));
-  };
-
-  var noJQFocusOutHandler = function (element) {
-    return focusOut($(element));
-  };
-
-  return { focusIn: noJQFocusInHandler, focusOut: noJQFocusOutHandler };
+  return getNoJQFocusHandlers$1(focusIn, focusOut);
 };
 
 /** ******************* selected KeySet related methods *****************/
@@ -419,7 +440,12 @@ DataCollectionUtils.KEYBOARD_KEYS = {
   _ESCAPE_IE: 'Esc',
   _ESCAPE_CODE: 27,
   _F2: 'F2',
-  _F2_CODE: 113
+  _F2_CODE: 113,
+  _NUM5_KEY: '5',
+  _NUM5_KEY_CODE: 53,
+  _LETTER_A: 'a',
+  _LETTER_A_UPPERCASE: 'A',
+  _LETTER_A_CODE: 65
 };
 
 /**
@@ -516,6 +542,23 @@ DataCollectionUtils.isArrowRightKeyEvent = function (eventKey) {
          eventKey === DataCollectionUtils.KEYBOARD_KEYS._RIGHT_CODE;
 };
 
+/**
+ * @private
+ */
+DataCollectionUtils.isNumberFiveKeyEvent = function (eventKey) {
+  return eventKey === DataCollectionUtils.KEYBOARD_KEYS._NUM5_KEY ||
+         eventKey === DataCollectionUtils.KEYBOARD_KEYS._NUM5_KEY_CODE;
+};
+
+/**
+ * @private
+ */
+DataCollectionUtils.isLetterAKeyEvent = function (eventKey) {
+  return eventKey === DataCollectionUtils.KEYBOARD_KEYS._LETTER_A ||
+         eventKey === DataCollectionUtils.KEYBOARD_KEYS._LETTER_A_UPPERCASE ||
+         eventKey === DataCollectionUtils.KEYBOARD_KEYS._LETTER_A_CODE;
+};
+
 /** **************** data mutation event handling methods ****************** */
 
 /**
@@ -552,6 +595,9 @@ DataCollectionUtils.getAddEventKeysResult = function (initialKeys, addEventDetai
       eventBeforeKeys.push(key);
     });
   }
+
+  var eventIndexes = addEventDetail.indexes;
+
   // if beforeKeys are specified, they take precedence over index values.
   if (eventBeforeKeys.length === eventKeys.length) {
     // loop through the beforeKeys, and perform insertions as we find them.
@@ -564,7 +610,7 @@ DataCollectionUtils.getAddEventKeysResult = function (initialKeys, addEventDetai
       for (i = eventKeys.length - 1; i >= 0; i--) {
         eventKey = eventKeys[i];
         // ensure the key does not already exist in the data set.
-        if (!DataCollectionUtils._containsKey(returnKeys, eventKey)) {
+        if (!DataCollectionUtils.containsKey(returnKeys, eventKey)) {
           beforeKey = eventBeforeKeys[i];
           if (beforeKey != null) {
             beforeIndex = DataCollectionUtils._indexOfKey(returnKeys, beforeKey);
@@ -582,15 +628,14 @@ DataCollectionUtils.getAddEventKeysResult = function (initialKeys, addEventDetai
         }
       }
     }
-  } else {
+  } else if (eventIndexes != null && eventIndexes.length === eventKeys.length) {
     // if beforeKeys are not specified, we need to rely on the index values.
     // in order to be safely added, we need to ensure they are ordered in ascending order
-    var eventIndexes = addEventDetail.indexes;
     var indexItems = [];
     for (i = 0; i < eventKeys.length; i++) {
       eventKey = eventKeys[i];
       // ensure the key does not already exist in the data set
-      if (!DataCollectionUtils._containsKey(returnKeys, eventKey)) {
+      if (!DataCollectionUtils.containsKey(returnKeys, eventKey)) {
         eventIndex = eventIndexes[i];
         if (eventIndex != null) {
           var added = false;
@@ -621,6 +666,11 @@ DataCollectionUtils.getAddEventKeysResult = function (initialKeys, addEventDetai
         returnKeys.push(indexItem.key);
       }
     }
+  } else if (isLoadAll) {
+    // if neither beforeKeys nor indexes are specified, just add all keys to the end in the current order
+    eventKeys.forEach(function (key) {
+      returnKeys.push(key);
+    });
   }
 
   // return updated keys since any remaining beforeKey rows and index rows are not connected to the viewport
@@ -630,7 +680,7 @@ DataCollectionUtils.getAddEventKeysResult = function (initialKeys, addEventDetai
 /**
  * @private
  */
-DataCollectionUtils._containsKey = function (array, key) {
+DataCollectionUtils.containsKey = function (array, key) {
   for (var i = 0; i < array.length; i++) {
     if (oj.KeyUtils.equals(array[i], key)) {
       return true;
@@ -651,9 +701,73 @@ DataCollectionUtils._indexOfKey = function (array, key) {
   return -1;
 };
 
+/**
+ * Helper method to calculate the offsetTop from element to ancestor
+ * @param {Element} ancestor the ancestor element
+ * @param {Element} element the element
+ * @return {number} the distance between the specified element and ancestor
+ */
+DataCollectionUtils.calculateOffsetTop = function (ancestor, element) {
+  var offset = 0;
+  var current = element;
+  while (current && current !== ancestor && ancestor.contains(current)) {
+    offset += current.offsetTop;
+    current = current.offsetParent;
+  }
+
+  return offset;
+};
+
+/**
+ * Components that open popups (such as ojSelect, ojCombobox, ojInputDate, etc.) will trigger
+ * focusout, but components don't want to exit actionable/edit mode in those cases.
+ * This method should be used inside the component's focusout handler.
+ * @param elem the component element
+ * @return the logical popup element if one has been launched from within the component, null otherwise.
+ */
+DataCollectionUtils.getLogicalChildPopup = function (componentElement) {
+  var popups = oj.ZOrderUtils.findOpenPopups();
+  for (var i = 0; i < popups.length; i++) {
+    // Get the launcher of the popup.
+    // popups[i] is just a wrapper with the real popup as its child.
+    var popupElem = popups[i].firstElementChild;
+    var launcher = getLogicalParent($(popupElem));
+
+    // Check if the component contains the launcher
+    if (launcher != null && $(componentElement).has(launcher.get(0)).length > 0) {
+      // only return the popup if the child popup is currently open
+      if (oj.ZOrderUtils.getStatus(popupElem) === oj.ZOrderUtils.STATUS.OPEN) {
+        return popupElem;
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * Helper method to determine if an element is within the current viewport
+ * @param {Element} elem
+ * @param {Element} scroller
+ */
+DataCollectionUtils.isElementInScrollerBounds = function (elem, scroller) {
+  var top;
+  var bottom;
+  if (scroller === document.documentElement) {
+    top = 0;
+    bottom = document.documentElement.clientHeight;
+  } else {
+    var scrollerBounds = scroller.getBoundingClientRect();
+    top = scrollerBounds.top;
+    bottom = scrollerBounds.bottom;
+  }
+  var bounds = elem.getBoundingClientRect();
+  return (bounds.top >= top && bounds.bottom <= bottom);
+};
+
 const applyMergedInlineStyles = DataCollectionUtils.applyMergedInlineStyles;
 const applyStyleObj = DataCollectionUtils.applyStyleObj;
 const areKeySetsEqual = DataCollectionUtils.areKeySetsEqual;
+const containsKey = DataCollectionUtils.containsKey;
 const convertStringToStyleObj = DataCollectionUtils.convertStringToStyleObj;
 const disableElement = DataCollectionUtils.disableElement;
 const disableAllFocusableElements = DataCollectionUtils.disableAllFocusableElements;
@@ -662,7 +776,9 @@ const enableAllFocusableElements = DataCollectionUtils.enableAllFocusableElement
 const getAddEventKeysResult = DataCollectionUtils.getAddEventKeysResult;
 const getDefaultScrollBarWidth = DataCollectionUtils.getDefaultScrollBarWidth;
 const getFocusableElementsIncludingDisabled = DataCollectionUtils.getFocusableElementsIncludingDisabled;
+const isElementOrAncestorFocusable = DataCollectionUtils.isElementOrAncestorFocusable;
 const getFocusableElementsInNode = DataCollectionUtils.getFocusableElementsInNode;
+const getLogicalChildPopup = DataCollectionUtils.getLogicalChildPopup;
 const getNoJQFocusHandlers = DataCollectionUtils.getNoJQFocusHandlers;
 const handleActionablePrevTab = DataCollectionUtils.handleActionablePrevTab;
 const handleActionableTab = DataCollectionUtils.handleActionableTab;
@@ -675,12 +791,17 @@ const isEndKeyEvent = DataCollectionUtils.isEndKeyEvent;
 const isEnterKeyEvent = DataCollectionUtils.isEnterKeyEvent;
 const isEscapeKeyEvent = DataCollectionUtils.isEscapeKeyEvent;
 const isEventClickthroughDisabled = DataCollectionUtils.isEventClickthroughDisabled;
+const isFromDefaultSelector = DataCollectionUtils.isFromDefaultSelector;
 const isF2KeyEvent = DataCollectionUtils.isF2KeyEvent;
 const isHomeKeyEvent = DataCollectionUtils.isHomeKeyEvent;
 const isMobileTouchDevice = DataCollectionUtils.isMobileTouchDevice;
 const isSpaceBarKeyEvent = DataCollectionUtils.isSpaceBarKeyEvent;
 const isTabKeyEvent = DataCollectionUtils.isTabKeyEvent;
+const isNumberFiveKeyEvent = DataCollectionUtils.isNumberFiveKeyEvent;
+const isLetterAKeyEvent = DataCollectionUtils.isLetterAKeyEvent;
 const KEYBOARD_KEYS = DataCollectionUtils.KEYBOARD_KEYS;
 const CHECKVIEWPORT_THRESHOLD = DataCollectionUtils.CHECKVIEWPORT_THRESHOLD;
+const calculateOffsetTop = DataCollectionUtils.calculateOffsetTop;
+const isElementInScrollerBounds = DataCollectionUtils.isElementInScrollerBounds;
 
-export { CHECKVIEWPORT_THRESHOLD, KEYBOARD_KEYS, applyMergedInlineStyles, applyStyleObj, areKeySetsEqual, convertStringToStyleObj, disableAllFocusableElements, disableDefaultBrowserStyling, disableElement, enableAllFocusableElements, getAddEventKeysResult, getDefaultScrollBarWidth, getFocusableElementsInNode, getFocusableElementsIncludingDisabled, getNoJQFocusHandlers, handleActionablePrevTab, handleActionableTab, isArrowDownKeyEvent, isArrowLeftKeyEvent, isArrowRightKeyEvent, isArrowUpKeyEvent, isClickthroughDisabled, isEndKeyEvent, isEnterKeyEvent, isEscapeKeyEvent, isEventClickthroughDisabled, isF2KeyEvent, isHomeKeyEvent, isMobileTouchDevice, isSpaceBarKeyEvent, isTabKeyEvent };
+export { CHECKVIEWPORT_THRESHOLD, KEYBOARD_KEYS, applyMergedInlineStyles, applyStyleObj, areKeySetsEqual, calculateOffsetTop, containsKey, convertStringToStyleObj, disableAllFocusableElements, disableDefaultBrowserStyling, disableElement, enableAllFocusableElements, getAddEventKeysResult, getDefaultScrollBarWidth, getFocusableElementsInNode, getFocusableElementsIncludingDisabled, getLogicalChildPopup, getNoJQFocusHandlers, handleActionablePrevTab, handleActionableTab, isArrowDownKeyEvent, isArrowLeftKeyEvent, isArrowRightKeyEvent, isArrowUpKeyEvent, isClickthroughDisabled, isElementInScrollerBounds, isElementOrAncestorFocusable, isEndKeyEvent, isEnterKeyEvent, isEscapeKeyEvent, isEventClickthroughDisabled, isF2KeyEvent, isFromDefaultSelector, isHomeKeyEvent, isLetterAKeyEvent, isMobileTouchDevice, isNumberFiveKeyEvent, isSpaceBarKeyEvent, isTabKeyEvent };

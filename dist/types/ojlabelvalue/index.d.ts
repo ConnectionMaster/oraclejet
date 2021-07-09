@@ -1,11 +1,5 @@
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * Licensed under The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
+import { GlobalProps } from 'ojs/ojvcomponent';
+import { ComponentChildren } from 'preact';
 import { JetElement, JetSettableProperties, JetElementCustomEvent, JetSetPropertyType } from '..';
 export interface ojLabelValue extends JetElement<ojLabelValueSettableProperties> {
     colspan: number;
@@ -40,4 +34,26 @@ export interface ojLabelValueSettableProperties extends JetSettableProperties {
 }
 export interface ojLabelValueSettablePropertiesLenient extends Partial<ojLabelValueSettableProperties> {
     [key: string]: any;
+}
+export type LabelValueElement = ojLabelValue;
+export namespace LabelValueElement {
+    // tslint:disable-next-line interface-over-type-literal
+    type colspanChanged = JetElementCustomEvent<ojLabelValue["colspan"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type labelEdgeChanged = JetElementCustomEvent<ojLabelValue["labelEdge"]>;
+    // tslint:disable-next-line interface-over-type-literal
+    type labelWidthChanged = JetElementCustomEvent<ojLabelValue["labelWidth"]>;
+}
+export interface LabelValueIntrinsicProps extends Partial<Readonly<ojLabelValueSettableProperties>>, GlobalProps, Pick<preact.JSX.HTMLAttributes, 'ref' | 'key'> {
+    oncolspanChanged?: (value: ojLabelValueEventMap['colspanChanged']) => void;
+    onlabelEdgeChanged?: (value: ojLabelValueEventMap['labelEdgeChanged']) => void;
+    onlabelWidthChanged?: (value: ojLabelValueEventMap['labelWidthChanged']) => void;
+    children?: ComponentChildren;
+}
+declare global {
+    namespace preact.JSX {
+        interface IntrinsicElements {
+            "oj-label-value": LabelValueIntrinsicProps;
+        }
+    }
 }

@@ -11,14 +11,6 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
     ojSet = ojSet && Object.prototype.hasOwnProperty.call(ojSet, 'default') ? ojSet['default'] : ojSet;
 
     /**
-     * @license
-     * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
-     * The Universal Permissive License (UPL), Version 1.0
-     * as shown at https://oss.oracle.com/licenses/upl/
-     * @ignore
-     */
-
-    /**
      * @preserve Copyright 2013 jQuery Foundation and other contributors
      * Released under the MIT license.
      * http://jquery.org/license
@@ -60,7 +52,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
      *                  {"name": "D", "description": "Type of returned data"},
      *                  {"name": "BD", "description": "Type of base data"}]},
      *               {target: "Type", value: "DataProvider<K, BD>", for: "baseDataProvider"},
-     *               {target: "Type", value: "JoiningDataProvider.DataProviderOptions<D, BD>", for: "options"}]
+     *               {target: "Type", value: "JoiningDataProvider.Options<D, BD> | JoiningDataProvider.DataProviderOptions<D, BD>", for: "options"}]
      * @ojtsimport {module: "ojdataprovider", type: "AMD", imported: ["DataProvider", "FetchByKeysParameters",
      *   "ContainsKeysResults","FetchByKeysResults","FetchByOffsetParameters","FetchByOffsetResults", "DataMapping",
      *   "FetchListResult","FetchListParameters", "FetchAttribute"]}
@@ -103,12 +95,22 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
      */
 
     /**
+     * @typedef {Object} JoiningDataProvider.Options
+     * @property {Object} joins - <p>A map of attribute name to information about DataProviders to join in.</p>
+     * <p>The returned data for each row from the joined DataProvider will be merged as an object under the attribute name in the JoiningDataProvider.
+     * </p>
+     * @ojsignature [{target: "Type", value: "<D, BD>", for: "genericTypeParameters"},
+     *               {target: "Type", value: "Record<keyof Omit<D, keyof BD>, DataProviderJoinInfo<D, any, any>>", for: "joins"}]
+     */
+
+    /**
      * @typedef {Object} JoiningDataProvider.DataProviderOptions
      * @property {Object} joins - <p>A map of attribute name to information about DataProviders to join in.</p>
      * <p>The returned data for each row from the joined DataProvider will be merged as an object under the attribute name in the JoiningDataProvider.
      * </p>
      * @ojsignature [{target: "Type", value: "<D, BD>", for: "genericTypeParameters"},
      *               {target: "Type", value: "Record<keyof Omit<D, keyof BD>, DataProviderJoinInfo<D, any, any>>", for: "joins"}]
+     * @ojdeprecated {since: '10.1.0', description: 'Use type Options instead of object for options'}
      */
 
     /**
@@ -136,11 +138,42 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
      */
 
     /**
-     * @inheritdoc
+     * Get an AsyncIterable object for iterating the data.
+     * <p>
+     * AsyncIterable contains a Symbol.asyncIterator method that returns an AsyncIterator.
+     * AsyncIterator contains a “next” method for fetching the next block of data.
+     * </p><p>
+     * The "next" method returns a promise that resolves to an object, which contains a "value" property for the data and a "done" property
+     * that is set to true when there is no more data to be fetched.  The "done" property should be set to true only if there is no "value"
+     * in the result.  Note that "done" only reflects whether the iterator is done at the time "next" is called.  Future calls to "next"
+     * may or may not return more rows for a mutable data source.
+     * </p>
+     * <p>
+     * Please see the <a href="DataProvider.html#custom-implementations-section">DataProvider documentation</a> for
+     * more information on custom implementations.
+     * </p>
+     *
+     * @param {FetchListParameters=} params fetch parameters
+     * @return {AsyncIterable.<FetchListResult>} AsyncIterable with {@link FetchListResult}
+     * @see {@link https://github.com/tc39/proposal-async-iteration} for further information on AsyncIterable.
+     * @export
+     * @expose
      * @memberof JoiningDataProvider
      * @instance
      * @method
      * @name fetchFirst
+     * @ojsignature {target: "Type",
+     *               value: "(parameters?: FetchListParameters<D>): AsyncIterable<FetchListResult<K, D>>"}
+     * @ojtsexample <caption>Get an asyncIterator and then fetch first block of data by executing next() on the iterator. Subsequent blocks can be fetched by executing next() again.</caption>
+     * let asyncIterator = dataprovider.fetchFirst(options)[Symbol.asyncIterator]();
+     * let result = await asyncIterator.next();
+     * let value = result.value;
+     * let data = value.data;
+     * let keys = value.metadata.map(function(val) {
+     *   return val.key;
+     * });
+     * // true or false for done
+     * let done = result.done;
      */
 
     /**
@@ -298,20 +331,20 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
             this._getJoinSpec(options);
         }
         fetchFirst(params) {
-            let baseParams = params;
+            const baseParams = params;
             if (params && params.attributes) {
                 baseParams.attributes = this._seperateBaseJoinAttributes(params);
             }
             else {
                 this._mapJoinAttributes = null;
             }
-            let asyncIterable = this.baseDataProvider.fetchFirst(baseParams);
+            const asyncIterable = this.baseDataProvider.fetchFirst(baseParams);
             return new this.JoiningAsyncIterable(this, params, asyncIterable[Symbol.asyncIterator]());
         }
         fetchByKeys(params) {
             let baseParams = params;
             if (params && params.attributes) {
-                let baseAttributes = this._seperateBaseJoinAttributes(params);
+                const baseAttributes = this._seperateBaseJoinAttributes(params);
                 baseParams = {
                     keys: params.keys,
                     attributes: baseAttributes,
@@ -322,14 +355,15 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                 this._mapJoinAttributes = null;
             }
             return this.baseDataProvider.fetchByKeys(baseParams).then((baseResults) => {
-                let results = new ojMap();
+                const results = new ojMap();
                 if (baseResults != undefined && baseResults.results != undefined) {
-                    let data = [];
-                    let metaData = [];
-                    let keyValues = [];
+                    const data = [];
+                    const metaData = [];
+                    const keyValues = [];
                     let i = 0;
                     params.keys.forEach((key) => {
-                        keyValues[i++] = key;
+                        keyValues[i] = key;
+                        i++;
                     });
                     this._fetchByKeyResultsToArray(baseResults, keyValues, metaData, data);
                     return this._joiningData(data, this.options).then((joinData) => {
@@ -346,7 +380,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
         fetchByOffset(params) {
             let baseParams = params;
             if (params && params.attributes) {
-                let baseAttributes = this._seperateBaseJoinAttributes(params);
+                const baseAttributes = this._seperateBaseJoinAttributes(params);
                 baseParams = {
                     attributes: baseAttributes,
                     clientId: params.clientId,
@@ -363,13 +397,13 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                 .fetchByOffset(baseParams)
                 .then((baseResult) => {
                 if (baseResult.results != undefined) {
-                    let metaData = [];
-                    let data = [];
+                    const metaData = [];
+                    const data = [];
                     for (let i = 0; i < baseResult.results.length; i++) {
                         metaData[i] = baseResult.results[i].metadata;
                         data[i] = baseResult.results[i].data;
                     }
-                    let resultArray = [];
+                    const resultArray = [];
                     return this._joiningData(data, this.options).then((joinData) => {
                         for (let i = 0; i < baseResult.results.length; i++) {
                             resultArray[i] = new this.Item(this, metaData[i], joinData[i]);
@@ -390,11 +424,10 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
             });
         }
         isEmpty() {
-            let isEmpty = this.baseDataProvider.isEmpty();
-            return isEmpty;
+            return this.baseDataProvider.isEmpty();
         }
         getCapability(capabilityName) {
-            if (capabilityName == 'sort' || capabilityName == 'filter') {
+            if (capabilityName === 'sort' || capabilityName === 'filter') {
                 return null;
             }
             else {
@@ -406,7 +439,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
         }
         createOptimizedKeyMap(initialMap) {
             if (initialMap) {
-                let map = new ojMap();
+                const map = new ojMap();
                 initialMap.forEach(function (value, key) {
                     map.set(key, value);
                 });
@@ -415,11 +448,11 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
             return new ojMap();
         }
         _getJoinSpec(options) {
-            let joins = options.joins;
+            const joins = options.joins;
             this._joinAlias = Object.keys(joins);
             for (let i = 0; i < this._joinAlias.length; i++) {
-                let alias = this._joinAlias[i];
-                let joinInfo = joins[alias];
+                const alias = this._joinAlias[i];
+                const joinInfo = joins[alias];
                 if (joinInfo != undefined) {
                     if (joinInfo.foreignKeyMapping.foreignKey != undefined) {
                         this._fks[i] = joinInfo.foreignKeyMapping.foreignKey;
@@ -446,14 +479,13 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
         }
         _seperateBaseJoinAttributes(params) {
             this._mapJoinAttributes = new Map();
-            let origAttr = params.attributes;
+            const origAttr = params.attributes;
             let iBase = 0;
             let baseAttributes = [];
-            for (let i = 0; i < origAttr.length; i++) {
-                let attr = origAttr[i];
+            for (let attr of origAttr) {
                 let alias;
                 let attributes;
-                if (typeof attr == 'string' || attr instanceof String) {
+                if (attr instanceof String || typeof attr === 'string') {
                     alias = attr;
                     attributes = attr;
                 }
@@ -463,7 +495,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                 }
                 let bJoinAlias = false;
                 for (let j = 0; this._joinAlias != null && j < this._joinAlias.length; j++) {
-                    if (alias == this._joinAlias[j]) {
+                    if (alias === this._joinAlias[j]) {
                         bJoinAlias = true;
                         break;
                     }
@@ -475,7 +507,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                             if (joinAttrs == undefined) {
                                 joinAttrs = [];
                             }
-                            joinAttrs.concat(attributes);
+                            joinAttrs = joinAttrs.concat(attributes);
                             this._mapJoinAttributes.set(alias, joinAttrs);
                         }
                     }
@@ -484,17 +516,19 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                     }
                 }
                 else {
-                    baseAttributes[iBase++] = attributes;
+                    baseAttributes[iBase] = attributes;
+                    iBase++;
                 }
             }
             for (let k = 0; this._fks != null && k < this._fks.length; k++) {
-                let fk = this._fks[k];
+                const fk = this._fks[k];
                 if (!baseAttributes.includes(fk)) {
                     if (fk instanceof Array) {
                         baseAttributes = baseAttributes.concat(fk);
                     }
                     else {
-                        baseAttributes[iBase++] = this._fks[k];
+                        baseAttributes[iBase] = this._fks[k];
+                        iBase++;
                     }
                 }
             }
@@ -504,16 +538,14 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
             if (baseData == undefined || baseData.length == 0 || options.joins == undefined) {
                 return Promise.resolve(baseData);
             }
-            let fkValues = [];
-            let promises = [];
+            const fkValues = [];
+            const promises = [];
             this._getFKValues(baseData, this._fks, this._transform, fkValues);
             for (let i = 0; i < this._joinAlias.length; i++) {
-                let joinDP = this._joinDPs[i];
-                let capability = joinDP.getCapability('fetchByKeys');
-                if (capability == null || capability.implementation != 'batchLookup') {
-                    Logger.warn("Warning: The joined data provider named '" +
-                        this._joinAlias[i] +
-                        "' does not support 'batchLookup' implementation for FetchByKeysCapability.");
+                const joinDP = this._joinDPs[i];
+                const capability = joinDP.getCapability('fetchByKeys');
+                if (capability == null || capability.implementation !== 'batchLookup') {
+                    Logger.warn(`Warning: The joined data provider named '${this._joinAlias[i]}' does not support 'batchLookup' implementation for FetchByKeysCapability.`);
                 }
                 if (joinDP == null) {
                     promises[i] = null;
@@ -526,7 +558,7 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                         promises[i] = null;
                     }
                     else {
-                        let attr = this._mapJoinAttributes.get(this._joinAlias[i]);
+                        const attr = this._mapJoinAttributes.get(this._joinAlias[i]);
                         promises[i] = joinDP.fetchByKeys({
                             keys: fkValues[i],
                             attributes: attr
@@ -535,8 +567,8 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
                 }
             }
             return Promise.all(promises).then((results) => {
-                let resultMetadata = [];
-                let resultData = [];
+                const resultMetadata = [];
+                const resultData = [];
                 for (let i = 0; results != null && i < results.length; i++) {
                     if (this._mapJoinAttributes == null || this._mapJoinAttributes.has(this._joinAlias[i])) {
                         this._fetchByKeyResultsToArray(results[i], fkValues[i], resultMetadata, resultData);
@@ -548,14 +580,14 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
         }
         _getFKValues(baseData, fks, transform, fkValues) {
             for (let i = 0; i < fks.length; i++) {
-                let vals = [];
+                const vals = [];
                 for (let j = 0; j < baseData.length; j++) {
                     if (baseData[j] != null && fks[i] != null) {
-                        if (transform != undefined && transform[i] != undefined) {
-                            let transformParam = new Object();
+                        if (transform != undefined && transform[i] != undefined && transform[i] != null) {
+                            const transformParam = new Object();
                             if (fks[i] instanceof Array) {
-                                for (let k = 0; k < fks[i].length; k++) {
-                                    transformParam[fks[i][k]] = baseData[j][fks[i][k]];
+                                for (let fk of fks[i]) {
+                                    transformParam[fk] = baseData[j][fk];
                                 }
                             }
                             else {
@@ -583,9 +615,9 @@ define(['ojs/ojmap', 'ojs/ojset', 'ojs/ojeventtarget', 'ojs/ojlogger'], function
             }
         }
         _fetchByKeyResultsToArray(result, keyValues, metaData, data) {
-            if (result != undefined && result.results != undefined && result.results.size != 0) {
+            if (result != undefined && result.results != undefined && result.results.size !== 0) {
                 for (let i = 0; i < keyValues.length; i++) {
-                    let item = result.results.get(keyValues[i]);
+                    const item = result.results.get(keyValues[i]);
                     if (item != undefined) {
                         metaData[i] = item.metadata;
                         data[i] = item.data;

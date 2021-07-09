@@ -7,18 +7,10 @@
  */
 import oj from 'ojs/ojcore-base';
 import { FilterFactory, DataProviderMutationEvent, DataProviderRefreshEvent } from 'ojs/ojdataprovider';
-import { EventTargetMixin } from 'ojs/ojeventtarget';
+import { GenericEvent, EventTargetMixin } from 'ojs/ojeventtarget';
 import ojMap from 'ojs/ojmap';
 import ojSet from 'ojs/ojset';
 import 'ojs/ojcomponentcore';
-
-/**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
 
 /**
  * @preserve Copyright 2013 jQuery Foundation and other contributors
@@ -72,13 +64,17 @@ import 'ojs/ojcomponentcore';
  *   <li>Show the error messages to the user if needed.
  * </ol>
  * </p>
- * <p>In general, the edit item data should have the same shape as the data in the underlying DataProvider.
+ *
+ * <p>In general, the edit item data should have the same shape as the data in the underlying DataProvider.  If sorting and filtering is used
+ * in the underlying DataProvider, the application should ensure that all attributes referenced in the sort criterion and filter criterion are
+ * included in the item data. Furthermore, iterators obtained by fetchFirst must all use the same sortCriteria if the application is using
+ * those iterators at the same time.
  * </p>
- * <p>If sorting and filtering is used in the underlying DataProvider, the application should ensure that all attributes referenced in the
- * sort criterion and filter criterion are included in the item data.  If there is a sortCriteria, added items are merged with the
- * underlying data based on the sortCriteria.  If there is no sortCriteria, added items are inserted at the
- * beginning of the underlying data.  Furthermore, iterators obtained by fetchFirst must all use the same sortCriteria
- * if the application is using those iterators at the same time.
+ * <p>If there is a sortCriteria, new items are merged with the underlying data when added, and updated items are sorted when committing
+ * based on the sortCriteria.
+ * </p>
+ * <p>If there is no sortCriteria, new items are inserted at the beginning of the underlying data.  When new items are committed,
+ * they may be moved to new positions if the underlying DataProvider fires mutate events for the committed items.
  * </p>
  * <p>BufferingDataProvider does not validate the item key and data.  It is up to the application to perform any validation
  * prior to creating edit items in the buffer.
@@ -160,11 +156,42 @@ import 'ojs/ojcomponentcore';
  */
 
 /**
- * @inheritdoc
+ * Get an AsyncIterable object for iterating the data.
+ * <p>
+ * AsyncIterable contains a Symbol.asyncIterator method that returns an AsyncIterator.
+ * AsyncIterator contains a “next” method for fetching the next block of data.
+ * </p><p>
+ * The "next" method returns a promise that resolves to an object, which contains a "value" property for the data and a "done" property
+ * that is set to true when there is no more data to be fetched.  The "done" property should be set to true only if there is no "value"
+ * in the result.  Note that "done" only reflects whether the iterator is done at the time "next" is called.  Future calls to "next"
+ * may or may not return more rows for a mutable data source.
+ * </p>
+ * <p>
+ * Please see the <a href="DataProvider.html#custom-implementations-section">DataProvider documentation</a> for
+ * more information on custom implementations.
+ * </p>
+ *
+ * @param {FetchListParameters=} params fetch parameters
+ * @return {AsyncIterable.<FetchListResult>} AsyncIterable with {@link FetchListResult}
+ * @see {@link https://github.com/tc39/proposal-async-iteration} for further information on AsyncIterable.
+ * @export
+ * @expose
  * @memberof BufferingDataProvider
  * @instance
  * @method
  * @name fetchFirst
+ * @ojsignature {target: "Type",
+ *               value: "(parameters?: FetchListParameters<D>): AsyncIterable<FetchListResult<K, D>>"}
+ * @ojtsexample <caption>Get an asyncIterator and then fetch first block of data by executing next() on the iterator. Subsequent blocks can be fetched by executing next() again.</caption>
+ * let asyncIterator = dataprovider.fetchFirst(options)[Symbol.asyncIterator]();
+ * let result = await asyncIterator.next();
+ * let value = result.value;
+ * let data = value.data;
+ * let keys = value.metadata.map(function(val) {
+ *   return val.key;
+ * });
+ * // true or false for done
+ * let done = result.done;
  */
 
 /**
@@ -394,15 +421,6 @@ import 'ojs/ojcomponentcore';
  */
 
 /**
- * @license
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates.
- * The Universal Permissive License (UPL), Version 1.0
- * as shown at https://oss.oracle.com/licenses/upl/
- * @ignore
- */
-
-
-/**
  * @preserve Copyright 2013 jQuery Foundation and other contributors
  * Released under the MIT license.
  * http://jquery.org/license
@@ -470,8 +488,8 @@ class EditBuffer {
         this.submittingItems = new ojMap();
     }
     addItem(item) {
-        let unsubmitted = this.unsubmittedItems.get(item.metadata.key);
-        let submitting = this.submittingItems.get(item.metadata.key);
+        const unsubmitted = this.unsubmittedItems.get(item.metadata.key);
+        const submitting = this.submittingItems.get(item.metadata.key);
         if ((unsubmitted && (unsubmitted.operation === 'add' || unsubmitted.operation === 'update')) ||
             (submitting && (submitting.operation === 'add' || submitting.operation === 'update'))) {
             throw new Error('Cannot add item with same key as an item being added or updated');
@@ -481,15 +499,15 @@ class EditBuffer {
                 this.unsubmittedItems.delete(item.metadata.key);
             }
             else {
-                this.unsubmittedItems.set(item.metadata.key, { operation: 'update', item: item });
+                this.unsubmittedItems.set(item.metadata.key, { operation: 'update', item });
             }
             return;
         }
-        this.unsubmittedItems.set(item.metadata.key, { operation: 'add', item: item });
+        this.unsubmittedItems.set(item.metadata.key, { operation: 'add', item });
     }
     removeItem(item) {
-        let unsubmitted = this.unsubmittedItems.get(item.metadata.key);
-        let submitting = this.submittingItems.get(item.metadata.key);
+        const unsubmitted = this.unsubmittedItems.get(item.metadata.key);
+        const submitting = this.submittingItems.get(item.metadata.key);
         if ((unsubmitted && unsubmitted.operation === 'remove') ||
             (submitting && submitting.operation === 'remove')) {
             throw new Error('Cannot remove item with same key as an item being removed');
@@ -499,14 +517,14 @@ class EditBuffer {
             return;
         }
         else if (unsubmitted && unsubmitted.operation === 'update') {
-            this.unsubmittedItems.set(item.metadata.key, { operation: 'remove', item: item });
+            this.unsubmittedItems.set(item.metadata.key, { operation: 'remove', item });
             return;
         }
-        this.unsubmittedItems.set(item.metadata.key, { operation: 'remove', item: item });
+        this.unsubmittedItems.set(item.metadata.key, { operation: 'remove', item });
     }
     updateItem(item) {
-        let unsubmitted = this.unsubmittedItems.get(item.metadata.key);
-        let submitting = this.submittingItems.get(item.metadata.key);
+        const unsubmitted = this.unsubmittedItems.get(item.metadata.key);
+        const submitting = this.submittingItems.get(item.metadata.key);
         if ((unsubmitted && unsubmitted.operation === 'remove') ||
             (submitting && submitting.operation === 'remove')) {
             throw new Error('Cannot update item with same key as an item being removed');
@@ -515,11 +533,11 @@ class EditBuffer {
             (unsubmitted.operation === 'add' || unsubmitted.operation === 'update')) {
             this.unsubmittedItems.set(item.metadata.key, {
                 operation: unsubmitted.operation,
-                item: item
+                item
             });
             return;
         }
-        this.unsubmittedItems.set(item.metadata.key, { operation: 'update', item: item });
+        this.unsubmittedItems.set(item.metadata.key, { operation: 'update', item });
     }
     setItemStatus(editItem, newStatus, error) {
         const key = editItem.item.metadata.key;
@@ -569,9 +587,9 @@ class EditBuffer {
     }
 }
 
-class BufferingDataProviderSubmittableChangeEvent extends oj.GenericEvent {
+class BufferingDataProviderSubmittableChangeEvent extends GenericEvent {
     constructor(detail) {
-        let eventOptions = {};
+        const eventOptions = {};
         eventOptions['detail'] = detail;
         super('submittableChange', eventOptions);
     }
@@ -595,12 +613,13 @@ class BufferingDataProvider {
                 this._parent = _parent;
                 this._baseIterator = _baseIterator;
                 this._params = _params;
-                this.itemArray = [];
                 this.firstBaseKey = null;
                 this.mergedAddKeySet = new ojSet();
-                this.mergedRemoveKeySet = new ojSet();
-                this.mergedMetadataArray = [];
-                this.mergedDataArray = [];
+                this.mergedItemArray = [];
+                this.nextOffset = 0;
+                if (this._params == null) {
+                    this._params = {};
+                }
             }
             _fetchNext() {
                 return this._baseIterator.next().then((result) => {
@@ -610,51 +629,47 @@ class BufferingDataProvider {
                     if (result.value.fetchParameters && result.value.fetchParameters.sortCriteria) {
                         this._parent.lastSortCriteria = result.value.fetchParameters.sortCriteria;
                     }
-                    const editBuffer = this._parent.editBuffer;
-                    if (!editBuffer.isEmpty()) {
-                        let baseItemArray = result.value.data.map((val, index) => {
-                            return { data: result.value.data[index], metadata: result.value.metadata[index] };
-                        });
-                        let newItemArray = this.itemArray.slice();
-                        this.itemArray = [];
-                        this._parent._mergeEdits(baseItemArray, newItemArray, this._params.filterCriterion, this._parent.lastSortCriteria, true, this.mergedAddKeySet, result.done);
-                        const params = this._params || {};
-                        if ((params.size && newItemArray.length < params.size) ||
-                            (params.size == null && newItemArray.length === 0)) {
-                            if (!result.done) {
-                                this.itemArray = newItemArray;
-                                return this._fetchNext();
+                    const baseItemArray = result.value.data.map((val, index) => {
+                        return { data: result.value.data[index], metadata: result.value.metadata[index] };
+                    });
+                    this._parent._mergeEdits(baseItemArray, this.mergedItemArray, this._params.filterCriterion, this._parent.lastSortCriteria, true, this.mergedAddKeySet, result.done);
+                    let actualReturnSize = this.mergedItemArray.length - this.nextOffset;
+                    for (let i = this.nextOffset; i < this.mergedItemArray.length; i++) {
+                        const item = this.mergedItemArray[i];
+                        if (this._parent._isItemRemoved(item.metadata.key)) {
+                            --actualReturnSize;
+                        }
+                    }
+                    const params = this._params || {};
+                    if ((params.size && actualReturnSize < params.size) ||
+                        (params.size == null && actualReturnSize === 0)) {
+                        if (!result.done) {
+                            return this._fetchNext();
+                        }
+                    }
+                    const newDataArray = [];
+                    const newMetaArray = [];
+                    let idx;
+                    for (idx = this.nextOffset; idx < this.mergedItemArray.length; idx++) {
+                        ++this.nextOffset;
+                        const item = this.mergedItemArray[idx];
+                        if (!this._parent._isItemRemoved(item.metadata.key)) {
+                            newDataArray.push(item.data);
+                            newMetaArray.push(item.metadata);
+                            if (params.size && newDataArray.length === params.size) {
+                                break;
                             }
                         }
-                        if (params.size && newItemArray.length > params.size) {
-                            this.itemArray = newItemArray.splice(params.size);
-                        }
-                        const done = result.done && this.itemArray.length === 0;
-                        let newDataArray = newItemArray.map((item) => {
-                            return item.data;
-                        });
-                        let newMetaArray = newItemArray.map((item) => {
-                            return item.metadata;
-                        });
-                        return {
-                            done: done,
-                            value: { fetchParameters: this._params, data: newDataArray, metadata: newMetaArray }
-                        };
                     }
-                    return result;
+                    const done = result.done && newDataArray.length === 0;
+                    return {
+                        done,
+                        value: { fetchParameters: this._params, data: newDataArray, metadata: newMetaArray }
+                    };
                 });
             }
             ['next']() {
-                const promise = this._fetchNext();
-                return promise.then((result) => {
-                    const metadata = result.value.metadata;
-                    const data = result.value.data;
-                    for (let i = 0; i < metadata.length; i++) {
-                        this.mergedMetadataArray.push(metadata[i]);
-                        this.mergedDataArray.push(data[i]);
-                    }
-                    return result;
-                });
+                return this._fetchNext();
             }
         };
         this._addEventListeners(dataProvider);
@@ -663,8 +678,8 @@ class BufferingDataProvider {
         this.lastIterator = null;
     }
     _fetchByKeysFromBuffer(params) {
-        let results = new ojMap();
-        let unresolvedKeys = new ojSet();
+        const results = new ojMap();
+        const unresolvedKeys = new ojSet();
         params.keys.forEach((key) => {
             const editItem = this.editBuffer.getItem(key);
             if (editItem) {
@@ -681,18 +696,15 @@ class BufferingDataProvider {
                 unresolvedKeys.add(key);
             }
         });
-        return {
-            results: results,
-            unresolvedKeys: unresolvedKeys
-        };
+        return { results, unresolvedKeys };
     }
     _compareItem(d1, d2, sortCriteria) {
-        for (let i = 0; i < sortCriteria.length; i++) {
-            if (d1[sortCriteria[i].attribute] > d2[sortCriteria[i].attribute]) {
-                return sortCriteria[i].direction === 'ascending' ? 1 : -1;
+        for (const sortCrt of sortCriteria) {
+            if (d1[sortCrt.attribute] > d2[sortCrt.attribute]) {
+                return sortCrt.direction === 'ascending' ? 1 : -1;
             }
-            else if (d1[sortCriteria[i].attribute] < d2[sortCriteria[i].attribute]) {
-                return sortCriteria[i].direction === 'ascending' ? -1 : 1;
+            else if (d1[sortCrt.attribute] < d2[sortCrt.attribute]) {
+                return sortCrt.direction === 'ascending' ? -1 : 1;
             }
         }
         return 0;
@@ -744,14 +756,14 @@ class BufferingDataProvider {
         if (addToBeginning && !(sortCriteria && sortCriteria.length)) {
             this._mergeAddEdits(filterObj, sortCriteria, newItemArray, mergedAddKeySet, lastBlock);
         }
-        for (let i = 0; i < baseItemArray.length; i++) {
-            let baseItem = baseItemArray[i];
-            let editItem = this.editBuffer.getItem(baseItem.metadata.key);
+        for (const baseItem of baseItemArray) {
+            const editItem = this.editBuffer.getItem(baseItem.metadata.key);
             if (!editItem) {
                 newItemArray.push(baseItem);
             }
             else {
                 if (editItem.operation === 'remove') {
+                    newItemArray.push(baseItem);
                 }
                 else if (editItem.operation === 'update') {
                     if (!filterObj || filterObj.filter(editItem.item.data)) {
@@ -777,8 +789,14 @@ class BufferingDataProvider {
                     sortCriteria = params.sortCriteria;
                 }
                 this._mergeEdits(baseItemArray, newItemArray, params.filterCriterion, sortCriteria, params.offset === 0, new ojSet(), baseResults.done);
-                if ((params.size && newItemArray.length < params.size) ||
-                    (params.size == null && newItemArray.length === 0)) {
+                let actualReturnSize = newItemArray.length;
+                for (const newItem of newItemArray) {
+                    if (this._isItemRemoved(newItem.metadata.key)) {
+                        --actualReturnSize;
+                    }
+                }
+                if ((params.size && actualReturnSize < params.size) ||
+                    (params.size == null && actualReturnSize === 0)) {
                     if (!baseResults.done) {
                         const nextParams = {
                             attributes: params.attributes,
@@ -791,6 +809,12 @@ class BufferingDataProvider {
                         return this._fetchFromOffset(nextParams, newItemArray);
                     }
                 }
+                for (let i = 0; i < newItemArray.length; i++) {
+                    if (this._isItemRemoved(newItemArray[i].metadata.key)) {
+                        newItemArray.splice(i, 1);
+                        --i;
+                    }
+                }
                 if (params.size && newItemArray.length > params.size) {
                     newItemArray.splice(params.size);
                 }
@@ -800,14 +824,14 @@ class BufferingDataProvider {
         });
     }
     containsKeys(params) {
-        let bufferResult = this._fetchByKeysFromBuffer(params);
-        let unresolvedKeys = bufferResult.unresolvedKeys;
-        let results = new ojSet();
+        const bufferResult = this._fetchByKeysFromBuffer(params);
+        const unresolvedKeys = bufferResult.unresolvedKeys;
+        const results = new ojSet();
         bufferResult.results.forEach((value, key) => {
             results.add(key);
         });
         if (unresolvedKeys.size === 0) {
-            return Promise.resolve({ containsParameters: params, results: results });
+            return Promise.resolve({ containsParameters: params, results });
         }
         return this.dataProvider
             .containsKeys({ attributes: params.attributes, keys: unresolvedKeys, scope: params.scope })
@@ -816,17 +840,17 @@ class BufferingDataProvider {
                 baseResults.results.forEach((value, key) => {
                     results.add(key);
                 });
-                return { containsParameters: params, results: results };
+                return { containsParameters: params, results };
             }
             return baseResults;
         });
     }
     fetchByKeys(params) {
-        let bufferResult = this._fetchByKeysFromBuffer(params);
-        let unresolvedKeys = bufferResult.unresolvedKeys;
-        let results = bufferResult.results;
+        const bufferResult = this._fetchByKeysFromBuffer(params);
+        const unresolvedKeys = bufferResult.unresolvedKeys;
+        const results = bufferResult.results;
         if (unresolvedKeys.size === 0) {
-            return Promise.resolve({ fetchParameters: params, results: results });
+            return Promise.resolve({ fetchParameters: params, results });
         }
         return this.dataProvider
             .fetchByKeys({ attributes: params.attributes, keys: unresolvedKeys, scope: params.scope })
@@ -835,7 +859,7 @@ class BufferingDataProvider {
                 baseResults.results.forEach((value, key) => {
                     results.set(key, value);
                 });
-                return { fetchParameters: params, results: results };
+                return { fetchParameters: params, results };
             }
             return baseResults;
         });
@@ -886,7 +910,7 @@ class BufferingDataProvider {
                 return 'no';
             }
         });
-        let isEmpty = this.dataProvider.isEmpty();
+        const isEmpty = this.dataProvider.isEmpty();
         if (isEmpty === 'no') {
             if (unsubmittedItems.size > 0 || submittingItems.size > 0) {
                 return 'unknown';
@@ -894,33 +918,59 @@ class BufferingDataProvider {
         }
         return isEmpty;
     }
-    _addToMergedArrays(item) {
+    _isItemRemoved(key) {
+        const editItem = this.editBuffer.getItem(key);
+        return editItem != null && editItem.operation === 'remove';
+    }
+    _addToMergedArrays(item, fromBaseDP, addBeforeKeyFromBase = null) {
         let addBeforeKey = null;
         if (this.lastIterator) {
             const sortCriteria = this.lastSortCriteria;
             if (sortCriteria && sortCriteria.length) {
-                let mergedMetadataArray = this.lastIterator.mergedMetadataArray;
-                let mergedDataArray = this.lastIterator.mergedDataArray;
-                let mergedRemoveKeySet = this.lastIterator.mergedRemoveKeySet;
-                for (let i = 0; i < mergedDataArray.length; i++) {
-                    if (this._compareItem(item.data, mergedDataArray[i], sortCriteria) < 0 &&
-                        !mergedRemoveKeySet.has(mergedMetadataArray[i].key)) {
-                        addBeforeKey = mergedMetadataArray[i].key;
-                        mergedMetadataArray.splice(i, 0, item.metadata);
-                        mergedDataArray.splice(i, 0, item.data);
+                const mergedItemArray = this.lastIterator.mergedItemArray;
+                for (let i = 0; i < mergedItemArray.length; i++) {
+                    if (this._compareItem(item.data, mergedItemArray[i].data, sortCriteria) < 0 &&
+                        !this._isItemRemoved(mergedItemArray[i].metadata.key)) {
+                        addBeforeKey = mergedItemArray[i].metadata.key;
+                        mergedItemArray.splice(i, 0, item);
+                        if (i < this.lastIterator.nextOffset) {
+                            ++this.lastIterator.nextOffset;
+                        }
                         break;
                     }
                 }
             }
             else {
-                addBeforeKey = this.lastIterator.firstBaseKey;
+                if (fromBaseDP) {
+                    addBeforeKey = this._getNextKey(addBeforeKeyFromBase);
+                }
+                else {
+                    addBeforeKey = this.lastIterator.firstBaseKey;
+                }
             }
         }
         return addBeforeKey;
     }
+    _getNextKey(key) {
+        let nextKey = key;
+        if (this.lastIterator) {
+            const mergedItemArray = this.lastIterator.mergedItemArray;
+            let keyIdx = this._findKeyInItems(key, mergedItemArray);
+            while (nextKey && this._isItemRemoved(nextKey)) {
+                nextKey =
+                    keyIdx === -1
+                        ? null
+                        : keyIdx + 1 === mergedItemArray.length
+                            ? null
+                            : mergedItemArray[keyIdx + 1].metadata.key;
+                keyIdx++;
+            }
+        }
+        return nextKey;
+    }
     addItem(item) {
         this.editBuffer.addItem(item);
-        let addBeforeKey = this._addToMergedArrays(item);
+        const addBeforeKey = this._addToMergedArrays(item, false);
         const detail = {
             add: {
                 data: [item.data],
@@ -933,28 +983,30 @@ class BufferingDataProvider {
         this.dispatchEvent(event);
         this._dispatchSubmittableChangeEvent();
     }
-    _removeFromMergedArrays(key) {
+    _removeFromMergedArrays(key, fromBaseDP) {
         if (this.lastIterator) {
-            let mergedMetadataArray = this.lastIterator.mergedMetadataArray;
-            let mergedDataArray = this.lastIterator.mergedDataArray;
-            let mergedAddKeySet = this.lastIterator.mergedAddKeySet;
-            let mergedRemoveKeySet = this.lastIterator.mergedRemoveKeySet;
-            const keyIdx = this._findKeyInMetadata(key, mergedMetadataArray);
+            const mergedItemArray = this.lastIterator.mergedItemArray;
+            const mergedAddKeySet = this.lastIterator.mergedAddKeySet;
+            const keyIdx = this._findKeyInItems(key, mergedItemArray);
             if (keyIdx !== -1) {
-                if (mergedAddKeySet.has(key)) {
-                    mergedMetadataArray.splice(keyIdx, 1);
-                    mergedDataArray.splice(keyIdx, 1);
+                if (fromBaseDP || mergedAddKeySet.has(key)) {
+                    mergedItemArray.splice(keyIdx, 1);
                     mergedAddKeySet.delete(key);
+                    if (keyIdx < this.lastIterator.nextOffset) {
+                        --this.lastIterator.nextOffset;
+                    }
                 }
                 else {
-                    mergedRemoveKeySet.add(key);
+                    if (keyIdx === this.lastIterator.nextOffset - 1) {
+                        --this.lastIterator.nextOffset;
+                    }
                 }
                 if (oj.KeyUtils.equals(this.lastIterator.firstBaseKey, key)) {
                     this.lastIterator.firstBaseKey = null;
-                    if (mergedMetadataArray.length > keyIdx) {
-                        for (let i = keyIdx; i < mergedMetadataArray.length; i++) {
-                            let newKey = mergedMetadataArray[i].key;
-                            if (!mergedRemoveKeySet.has(newKey)) {
+                    if (mergedItemArray.length > keyIdx) {
+                        for (let i = keyIdx; i < mergedItemArray.length; i++) {
+                            const newKey = mergedItemArray[i].metadata.key;
+                            if (!this._isItemRemoved(newKey)) {
                                 this.lastIterator.firstBaseKey = newKey;
                                 break;
                             }
@@ -966,7 +1018,7 @@ class BufferingDataProvider {
     }
     removeItem(item) {
         this.editBuffer.removeItem(item);
-        this._removeFromMergedArrays(item.metadata.key);
+        this._removeFromMergedArrays(item.metadata.key, false);
         const detail = {
             remove: {
                 data: item.data ? [item.data] : null,
@@ -994,7 +1046,7 @@ class BufferingDataProvider {
     getSubmittableItems() {
         const unsubmitted = this.editBuffer.getUnsubmittedItems();
         const submitting = this.editBuffer.getSubmittingItems();
-        let submittableItems = [];
+        const submittableItems = [];
         unsubmitted.forEach((editItem, key) => {
             if (!submitting.has(key)) {
                 submittableItems.push(editItem);
@@ -1025,8 +1077,8 @@ class BufferingDataProvider {
     }
     resetUnsubmittedItem(key) {
         const unsubmittedItems = this.editBuffer.getUnsubmittedItems();
-        let keySet = new ojSet();
-        let editItemMap = new ojMap();
+        const keySet = new ojSet();
+        const editItemMap = new ojMap();
         const editItem = unsubmittedItems.get(key);
         if (editItem) {
             keySet.add(key);
@@ -1035,10 +1087,11 @@ class BufferingDataProvider {
         }
         this._dispatchSubmittableChangeEvent();
         this.dataProvider.fetchByKeys({ keys: keySet }).then((resultObj) => {
-            let detail = {};
+            const detail = {};
             let resultItem;
             editItemMap.forEach((editItem, key) => {
                 if (editItem.operation === 'add') {
+                    this._removeFromMergedArrays(editItem.item.metadata.key, false);
                     this._addEventDetail(detail, 'remove', editItem.item);
                 }
                 else if (editItem.operation === 'remove') {
@@ -1046,13 +1099,12 @@ class BufferingDataProvider {
                     if (resultItem) {
                         let addBeforeKey = null;
                         if (this.lastIterator) {
-                            let mergedMetadataArray = this.lastIterator.mergedMetadataArray;
-                            let mergedRemoveKeySet = this.lastIterator.mergedRemoveKeySet;
-                            const keyIdx = this._findKeyInMetadata(key, mergedMetadataArray);
+                            const mergedItemArray = this.lastIterator.mergedItemArray;
+                            const keyIdx = this._findKeyInItems(key, mergedItemArray);
                             if (keyIdx !== -1) {
-                                for (let i = keyIdx + 1; i < mergedMetadataArray.length; i++) {
-                                    if (!mergedRemoveKeySet.has(mergedMetadataArray[i].key)) {
-                                        addBeforeKey = mergedMetadataArray[i].key;
+                                for (let i = keyIdx + 1; i < mergedItemArray.length; i++) {
+                                    if (!this._isItemRemoved(mergedItemArray[i].metadata.key)) {
+                                        addBeforeKey = mergedItemArray[i].metadata.key;
                                         break;
                                     }
                                 }
@@ -1095,9 +1147,51 @@ class BufferingDataProvider {
         }
         return -1;
     }
+    _findKeyInItems(key, items) {
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (oj.KeyUtils.equals(key, items[i].metadata.key)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
     _initDetailProp(detail, newDetail, propName, initValue) {
         if (detail[propName]) {
             newDetail[propName] = initValue;
+        }
+    }
+    _initDetail(detail, newDetail, bEmpty, bAdd = false) {
+        if (bEmpty) {
+            this._initDetailProp(detail, newDetail, 'data', []);
+            this._initDetailProp(detail, newDetail, 'metadata', []);
+            if (bAdd) {
+                this._initDetailProp(detail, newDetail, 'addBeforeKeys', []);
+            }
+            this._initDetailProp(detail, newDetail, 'parentKeys', []);
+        }
+        else {
+            this._initDetailProp(detail, newDetail, 'data', detail.data);
+            this._initDetailProp(detail, newDetail, 'metadata', detail.metadata);
+            if (bAdd) {
+                this._initDetailProp(detail, newDetail, 'addBeforeKeys', detail.addBeforeKeys);
+            }
+            this._initDetailProp(detail, newDetail, 'parentKeys', detail.parentKeys);
+        }
+    }
+    _initDetails(details, newDetails, bEmpty) {
+        if (details.add) {
+            newDetails.add = { keys: new ojSet() };
+            this._initDetail(details.add, newDetails.add, bEmpty, true);
+        }
+        if (details.remove) {
+            newDetails.remove = { keys: new ojSet() };
+            this._initDetail(details.remove, newDetails.remove, bEmpty);
+        }
+        if (details.update) {
+            newDetails.update = { keys: new ojSet() };
+            this._initDetail(details.update, newDetails.update, bEmpty);
         }
     }
     _pushDetailProp(detail, newDetail, propName, idx) {
@@ -1105,56 +1199,157 @@ class BufferingDataProvider {
             newDetail[propName].push(detail[propName][idx]);
         }
     }
-    _getOperationDetail(detail, isRemoveDetail) {
-        if (detail) {
-            let newDetail = {};
+    _pushDetail(key, detail, newDetail) {
+        newDetail.keys.add(key);
+        if (detail.metadata) {
+            const idx = this._findKeyInMetadata(key, detail.metadata);
+            if (idx > -1) {
+                this._pushDetailProp(detail, newDetail, 'data', idx);
+                this._pushDetailProp(detail, newDetail, 'metadata', idx);
+                if (newDetail.addBeforeKeys) {
+                    this._pushDetailProp(detail, newDetail, 'addBeforeKeys', idx);
+                }
+                this._pushDetailProp(detail, newDetail, 'parentKeys', idx);
+            }
+        }
+    }
+    _isSkipItem(key, submittingItems, unsubmittedItems) {
+        let skipItem = submittingItems.get(key) != null;
+        if (!skipItem) {
+            const editItem = unsubmittedItems.get(key);
+            skipItem = editItem && editItem.operation === 'remove';
+        }
+        return skipItem;
+    }
+    _isSortFieldUpdated(key, detail) {
+        let sortUpd = false;
+        if (this.lastIterator && this.lastSortCriteria && this.lastSortCriteria.length) {
+            const keyIdx = this._findKeyInItems(key, this.lastIterator.mergedItemArray);
+            const sortFields = [];
+            let i = 0;
+            if (this.lastIterator && this.lastSortCriteria) {
+                for (const sortCriteria of this.lastSortCriteria) {
+                    sortFields[i++] = sortCriteria.attribute;
+                }
+            }
+            for (const sortField of sortFields) {
+                const idx = this._findKeyInMetadata(key, detail.metadata);
+                if (this.lastIterator.mergedItemArray[keyIdx][sortField] !== detail.data[idx]) {
+                    sortUpd = true;
+                }
+            }
+        }
+        return sortUpd;
+    }
+    _getOperationDetails(details, addBeforeKeys, sortFldUpdateds) {
+        if (details && (details.add || details.remove || details.update)) {
+            let newDetails = {};
             const submittingItems = this.editBuffer.getSubmittingItems();
             const unsubmittedItems = this.editBuffer.getUnsubmittedItems();
             if (submittingItems.size === 0 && unsubmittedItems.size === 0) {
-                this._initDetailProp(detail, newDetail, 'data', detail.data);
-                this._initDetailProp(detail, newDetail, 'metadata', detail.metadata);
-                this._initDetailProp(detail, newDetail, 'addBeforeKeys', detail.addBeforeKeys);
-                this._initDetailProp(detail, newDetail, 'parentKeys', detail.parentKeys);
+                newDetails = details;
             }
             else {
-                newDetail.keys = new ojSet();
-                this._initDetailProp(detail, newDetail, 'data', []);
-                this._initDetailProp(detail, newDetail, 'metadata', []);
-                this._initDetailProp(detail, newDetail, 'addBeforeKeys', []);
-                this._initDetailProp(detail, newDetail, 'parentKeys', []);
-                detail.keys.forEach((key) => {
-                    let skipItem = submittingItems.get(key) != null;
-                    if (!skipItem) {
-                        const editItem = unsubmittedItems.get(key);
-                        skipItem = editItem && editItem.operation === 'remove';
-                    }
-                    if (!skipItem) {
-                        newDetail.keys.add(key);
-                        if (detail.metadata) {
-                            let idx = this._findKeyInMetadata(key, detail.metadata);
-                            if (idx > -1) {
-                                this._pushDetailProp(detail, newDetail, 'data', idx);
-                                this._pushDetailProp(detail, newDetail, 'metadata', idx);
-                                this._pushDetailProp(detail, newDetail, 'addBeforeKeys', idx);
-                                this._pushDetailProp(detail, newDetail, 'parentKeys', idx);
+                this._initDetails(details, newDetails, true);
+                let skipItem;
+                if (details.add) {
+                    details.add.keys.forEach((key) => {
+                        if (!this.lastIterator ||
+                            !this.lastSortCriteria ||
+                            this.lastSortCriteria.length === 0) {
+                            let removeDetail = newDetails.remove;
+                            if (!removeDetail) {
+                                removeDetail = { keys: new ojSet(), data: [], metadata: [] };
+                                newDetails.remove = removeDetail;
+                            }
+                            const submittingItem = submittingItems.get(key);
+                            const unsubmittedItem = unsubmittedItems.get(key);
+                            const editItem = submittingItem ? submittingItem : unsubmittedItem;
+                            if (editItem) {
+                                removeDetail.keys.add(editItem.item.metadata.key);
+                                removeDetail.data.push(editItem.item.data);
+                                removeDetail.metadata.push(editItem.item.metadata);
+                            }
+                            newDetails.remove = removeDetail;
+                            let addDetail = newDetails.add;
+                            if (!addDetail) {
+                                addDetail = { keys: new ojSet(), data: [], metadata: [], addBeforeKeys: [] };
+                                newDetails.add = addDetail;
+                            }
+                            this._pushDetail(key, details.add, newDetails.add);
+                        }
+                        else {
+                            skipItem = this._isSkipItem(key, submittingItems, unsubmittedItems);
+                            if (!skipItem) {
+                                this._pushDetail(key, details.add, newDetails.add);
                             }
                         }
-                    }
-                    if (isRemoveDetail) {
+                    });
+                }
+                if (details.remove) {
+                    details.remove.keys.forEach((key) => {
+                        skipItem = this._isSkipItem(key, submittingItems, unsubmittedItems);
+                        if (!skipItem) {
+                            this._pushDetail(key, details.remove, newDetails.remove);
+                        }
                         const editItem = unsubmittedItems.get(key);
                         if (editItem && (editItem.operation === 'remove' || editItem.operation === 'update')) {
                             unsubmittedItems.delete(key);
                         }
-                    }
-                });
-                return newDetail;
+                    });
+                }
+                if (details.update) {
+                    let idx = 0;
+                    details.update.keys.forEach((key) => {
+                        const bSortUpd = sortFldUpdateds[idx];
+                        if (bSortUpd &&
+                            this.lastIterator &&
+                            this.lastSortCriteria &&
+                            this.lastSortCriteria.length) {
+                            let removeDetail = newDetails.remove;
+                            if (!removeDetail) {
+                                removeDetail = { keys: new ojSet(), data: [], metadata: [] };
+                                newDetails.remove = removeDetail;
+                            }
+                            const submittingItem = submittingItems.get(key);
+                            const unsubmittedItem = unsubmittedItems.get(key);
+                            const editItem = submittingItem ? submittingItem : unsubmittedItem;
+                            if (editItem) {
+                                removeDetail.keys.add(editItem.item.metadata.key);
+                                removeDetail.data.push(editItem.item.data);
+                                removeDetail.metadata.push(editItem.item.metadata);
+                            }
+                            let addDetail = newDetails.add;
+                            if (!addDetail) {
+                                addDetail = { keys: new ojSet(), data: [], metadata: [], addBeforeKeys: [] };
+                                newDetails.add = addDetail;
+                            }
+                            if (editItem) {
+                                addDetail.keys.add(editItem.item.metadata.key);
+                                addDetail.data.push(editItem.item.data);
+                                addDetail.metadata.push(editItem.item.metadata);
+                                addDetail.addBeforeKeys.push(addBeforeKeys[idx]);
+                                idx++;
+                            }
+                        }
+                        else {
+                            skipItem = this._isSkipItem(key, submittingItems, unsubmittedItems);
+                            if (!skipItem) {
+                                this._pushDetail(key, details.update, newDetails.update);
+                            }
+                        }
+                    });
+                }
             }
+            return newDetails;
         }
-        return detail;
+        else {
+            return details;
+        }
     }
     _handleRefreshEvent(event) {
-        let unsubmittedItems = this.editBuffer.getUnsubmittedItems();
-        let keySet = new ojSet();
+        const unsubmittedItems = this.editBuffer.getUnsubmittedItems();
+        const keySet = new ojSet();
         unsubmittedItems.forEach((editItem) => {
             if (editItem.operation === 'remove' || editItem.operation === 'update') {
                 keySet.add(editItem.item.metadata.key);
@@ -1176,26 +1371,45 @@ class BufferingDataProvider {
         }
     }
     _handleMutateEvent(event) {
-        if (event.detail.remove) {
-            event.detail.remove.keys.forEach((key) => {
-                this._removeFromMergedArrays(key);
-            });
-        }
         const detailAdd = event.detail.add;
         if (detailAdd && detailAdd.metadata && detailAdd.data) {
             detailAdd.metadata.forEach((metadata, idx) => {
-                this._addToMergedArrays({ metadata: detailAdd.metadata[idx], data: detailAdd.data[idx] });
+                const addBeforeKey = this._addToMergedArrays({ metadata: detailAdd.metadata[idx], data: detailAdd.data[idx] }, true, detailAdd.addBeforeKeys[idx]);
+                if (detailAdd.addBeforeKeys[idx] && !addBeforeKey) {
+                    this.lastIterator.mergedItemArray.splice(this.lastIterator.mergedItemArray.length, 0, {
+                        data: detailAdd.data[idx],
+                        metadata: detailAdd.metadata[idx]
+                    });
+                }
+                detailAdd.addBeforeKeys[idx] = addBeforeKey;
             });
         }
-        let newAddDetail = this._getOperationDetail(event.detail.add, false);
-        let newRemoveDetail = this._getOperationDetail(event.detail.remove, true);
-        let newUpdateDetail = this._getOperationDetail(event.detail.update, false);
-        let newEventDetail = {
-            add: newAddDetail,
-            remove: newRemoveDetail,
-            update: newUpdateDetail
-        };
-        this.dispatchEvent(new DataProviderMutationEvent(newEventDetail));
+        const detailRemove = event.detail.remove;
+        if (detailRemove) {
+            detailRemove.keys.forEach((key) => {
+                this._removeFromMergedArrays(key, true);
+            });
+        }
+        const addBeforeKeys = [];
+        const sortFldUpdateds = [];
+        const detailUpdate = event.detail.update;
+        if (detailUpdate) {
+            detailUpdate.data.forEach((currData, idx) => {
+                sortFldUpdateds[idx] = this._isSortFieldUpdated(detailUpdate.metadata[idx].key, detailUpdate);
+                if (sortFldUpdateds[idx]) {
+                    this._removeFromMergedArrays(detailUpdate.metadata[idx].key, true);
+                    addBeforeKeys[idx] = this._addToMergedArrays({ data: currData, metadata: detailUpdate.metadata[idx] }, true);
+                    if (!addBeforeKeys[idx]) {
+                        this.lastIterator.mergedItemArray.splice(this.lastIterator.mergedItemArray.length, 0, {
+                            data: currData,
+                            metadata: detailUpdate.metadata[idx]
+                        });
+                    }
+                }
+            });
+        }
+        const newDetails = this._getOperationDetails(event.detail, addBeforeKeys, sortFldUpdateds);
+        this.dispatchEvent(new DataProviderMutationEvent(newDetails));
     }
     _addEventListeners(dataprovider) {
         dataprovider[BufferingDataProvider._ADDEVENTLISTENER](BufferingDataProvider._REFRESH, this._handleRefreshEvent.bind(this));
